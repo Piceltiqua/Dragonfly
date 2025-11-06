@@ -2,7 +2,7 @@
 #include <TinyMatrix.h>
 
 #define N_STATE 6
-#define N_GPS 3
+#define N_GNSS 3
 #define N_BARO 1
 #define N_LIDAR 1
 #define N_SIGMA (2 * N_STATE + 1)
@@ -18,7 +18,7 @@ public:
     Matrix<N_STATE,N_STATE> P;
     Matrix<N_STATE,N_STATE> Q;
 
-    Matrix<N_GPS,N_GPS> R_GPS;
+    Matrix<N_GNSS,N_GNSS> R_GNSS;
     Matrix<N_BARO,N_BARO> R_BARO;
     Matrix<N_LIDAR,N_LIDAR> R_LIDAR;
 
@@ -39,7 +39,7 @@ public:
                  float wx, float wy, float wz,
                  float dt);
 
-    void updateGPS(const Matrix<3,1> &z);
+    void updateGNSS(const Matrix<3,1> &z);
     void updateBarometer(const Matrix<3,1> &z);
     void updateLidar(const Matrix<1,1> &z);
 

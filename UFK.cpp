@@ -6,10 +6,7 @@ UKF::UKF()
     state.zeros();
     P.eye();
 
-    R_GPS.zeros();
-    R_GPS(0,0) = gps_var_x;
-    R_GPS(1,1) = gps_var_y;
-    R_GPS(2,2) = gps_var_z;
+    R_GNSS.zeros();
 
     R_Baro.zeros();
     R_BARO(0,0) = baro_var_z;
@@ -130,10 +127,10 @@ void UKF::predict(float ax, float ay, float az,
     P += Q;
 }
 
-void UKF::updateGPS(const Matrix<3,1> &z_meas)
+void UKF::updateGNSS(const Matrix<3,1> &z_meas, float horizontal_accuracy, float vertical_accuracy)
 {
     // Propagate sigma points through measurement model
-    Matrix<N_GPS, N_SIGMA> Z_sigma;
+    Matrix<N_GNSS, N_SIGMA> Z_sigma;
     for (int i = 0; i < N_SIGMA; i++) {
         Z_sigma(0, i) = sigma(0, i); // px
         Z_sigma(1, i) = sigma(1, i); // py
@@ -141,17 +138,22 @@ void UKF::updateGPS(const Matrix<3,1> &z_meas)
     }
 
     // Compute predicted measurement mean and covariance
-    Matrix<N_GPS,1> z_pred = weightedMean<N_GPS>(Z_sigma);
-    Matrix<N_GPS,N_GPS> S = weightedCovariance<N_GPS, N_GPS>(Z_sigma, z_pred, Z_sigma, z_pred);
-    Matrix<N_STATE,N_GPS> P_xz = weightedCovariance<N_STATE, N_GPS>(sigmaMat, state, Z_sigma, z_pred);
+    Matrix<N_GNSS,1> z_pred = weightedMean<N_GNSS>(Z_sigma);
+    Matrix<N_GNSS,N_GNSS> S = weightedCovariance<N_GNSS, N_GNSS>(Z_sigma, z_pred, Z_sigma, z_pred);
+    Matrix<N_STATE,N_GNSS> P_xz = weightedCovariance<N_STATE, N_GNSS>(sigmaMat, state, Z_sigma, z_pred);
 
-    S += R_GPS;
+
+    R_GNSS(0,0) = horizontal_accuracy * horizontal_accuracy;
+    R_GNSS(1,1) = horizontal_accuracy * horizontal_accuracy;
+    R_GNSS(2,2) = vertical_accuracy * vertical_accuracy;
+    
+    S += R_GNSS;
     
     // Kalman gain
-    Matrix<N_STATE,N_GPS> K = P_xz * S.inverse();
+    Matrix<N_STATE,N_GNSS> K = P_xz * S.inverse();
 
     // Update state and covariance
-    Matrix<N_GPS,1> y = z_meas - z_pred; // innovation
+    Matrix<N_GNSS,1> y = z_meas - z_pred; // innovation
     state += K * y;
     P -= K * S * K.transpose();
 }
