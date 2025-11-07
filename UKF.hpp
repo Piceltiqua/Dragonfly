@@ -1,5 +1,6 @@
 #pragma once
 #include <TinyMatrix.h>
+#include "utils.hpp"
 
 #define N_STATE 6
 #define N_GNSS 3
@@ -14,7 +15,7 @@ public:
     float sigma_a = 0.02f; // Accelerometer std (m/s²)
 
     // State vector and covariance
-    Matrix<N_STATE,1> state; 
+    Matrix<N_STATE,1> pos; 
     Matrix<N_STATE,N_STATE> P;
     Matrix<N_STATE,N_STATE> Q;
 

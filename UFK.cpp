@@ -3,7 +3,7 @@
 
 UKF::UKF()
 {
-    state.zeros();
+    pos.zeros();
     P.eye();
 
     R_GNSS.zeros();
@@ -53,15 +53,15 @@ void UKF::fx(Matrix<N_STATE,1> &x,
 void UKF::generateSigmaPoints()
 {
     // Central point
-    sigma[0] = state;
+    sigma[0] = pos;
 
     // Standard deviations along each axis
     for(int i=0; i<N_STATE; i++){
         float std_i = sqrtf(fmaxf(P(i,i), 0.0f));
         for(int j=0; j<N_STATE; j++){
             float delta = (j==i) ? SCALE*std_i : 0.0f;
-            sigma[1+i](j,0) = state(j,0) + delta;
-            sigma[1+N_STATE+i](j,0) = state(j,0) - delta;
+            sigma[1+i](j,0) = pos(j,0) + delta;
+            sigma[1+N_STATE+i](j,0) = pos(j,0) - delta;
         }
     }
 }
@@ -120,8 +120,8 @@ void UKF::predict(float ax, float ay, float az,
         fx(sigma[i], ax, ay, az, q0, q1, q2, q3, wx, wy, wz, dt);
     }
 
-    state = weightedMean<N_STATE>(X_sigma_pred);
-    P = weightedCovariance<N_STATE, N_STATE>(X_sigma_pred, state, X_sigma_pred, state);
+    pos = weightedMean<N_STATE>(X_sigma_pred);
+    P = weightedCovariance<N_STATE, N_STATE>(X_sigma_pred, pos, X_sigma_pred, pos);
 
     computeQ(dt);
     P += Q;
@@ -140,7 +140,7 @@ void UKF::updateGNSS(const Matrix<3,1> &z_meas, float horizontal_accuracy, float
     // Compute predicted measurement mean and covariance
     Matrix<N_GNSS,1> z_pred = weightedMean<N_GNSS>(Z_sigma);
     Matrix<N_GNSS,N_GNSS> S = weightedCovariance<N_GNSS, N_GNSS>(Z_sigma, z_pred, Z_sigma, z_pred);
-    Matrix<N_STATE,N_GNSS> P_xz = weightedCovariance<N_STATE, N_GNSS>(sigmaMat, state, Z_sigma, z_pred);
+    Matrix<N_STATE,N_GNSS> P_xz = weightedCovariance<N_STATE, N_GNSS>(sigmaMat, pos, Z_sigma, z_pred);
 
 
     R_GNSS(0,0) = horizontal_accuracy * horizontal_accuracy;
@@ -154,7 +154,7 @@ void UKF::updateGNSS(const Matrix<3,1> &z_meas, float horizontal_accuracy, float
 
     // Update state and covariance
     Matrix<N_GNSS,1> y = z_meas - z_pred; // innovation
-    state += K * y;
+    pos += K * y;
     P -= K * S * K.transpose();
 }
 
@@ -169,7 +169,7 @@ void UKF::updateBarometer(float z_meas)
     // Compute predicted measurement mean and covariance
     Matrix<N_BARO,1> z_pred = weightedMean<N_BARO>(Z_sigma);
     Matrix<N_BARO,N_BARO> S = weightedCovariance<N_BARO, N_BARO>(Z_sigma, z_pred, Z_sigma, z_pred);
-    Matrix<N_STATE,N_BARO> P_xz = weightedCovariance<N_STATE, N_BARO>(sigmaMat, state, Z_sigma, z_pred);
+    Matrix<N_STATE,N_BARO> P_xz = weightedCovariance<N_STATE, N_BARO>(sigmaMat, pos, Z_sigma, z_pred);
 
     S += R_Baro;
     
@@ -178,7 +178,7 @@ void UKF::updateBarometer(float z_meas)
 
     // Update state and covariance
     Matrix<N_BARO,1> y = z_meas - z_pred; // innovation
-    state += K * y;
+    pos += K * y;
     P -= K * S * K.transpose();
 }
 
@@ -193,7 +193,7 @@ void UKF::updateLidar(float z_meas)
     // Compute predicted measurement mean and covariance
     Matrix<N_LIDAR,1> z_pred = weightedMean<N_LIDAR>(Z_sigma);
     Matrix<N_LIDAR,N_LIDAR> S = weightedCovariance<N_LIDAR, N_LIDAR>(Z_sigma, z_pred, Z_sigma, z_pred);
-    Matrix<N_STATE,N_LIDAR> P_xz = weightedCovariance<N_STATE, N_LIDAR>(sigmaMat, state, Z_sigma, z_pred);
+    Matrix<N_STATE,N_LIDAR> P_xz = weightedCovariance<N_STATE, N_LIDAR>(sigmaMat, pos, Z_sigma, z_pred);
 
     S += R_Baro;
     
@@ -202,6 +202,6 @@ void UKF::updateLidar(float z_meas)
 
     // Update state and covariance
     Matrix<N_LIDAR,1> y = z_meas - z_pred; // innovation
-    state += K * y;
+    pos += K * y;
     P -= K * S * K.transpose();
 }
