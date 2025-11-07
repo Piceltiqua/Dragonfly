@@ -1,6 +1,6 @@
 #pragma once
 
-struct Position {
+struct PosVel {
     float posN = 0.0f;
     float posE = 0.0f;
     float posD = 0.0f;

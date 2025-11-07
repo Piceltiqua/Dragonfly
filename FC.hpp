@@ -25,7 +25,7 @@ private:
     AttitudeController attCtrl;
     PositionController posCtrl;
 
-    Position position;
+    PosVel posvel;
     Attitude attitude;
     IMUAcceleration imuAcc;
     GNSSData gnssData;

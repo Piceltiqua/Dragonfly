@@ -3,10 +3,10 @@
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(gnssData),
-      ukf(position, attitude, imuAcc, gnssData, barometerData),
+      ukf(posvel, attitude, imuAcc, gnssData, barometerData),
       barometer(barometerData),
       attitudeCtrl(attitude, actuatorCmds),
-      positionCtrl(position, actuatorCmds)
+      positionCtrl(posvel, actuatorCmds)
 {}
 
 void FlightController::setup() {
