@@ -9,8 +9,8 @@ FlightController::FlightController()
       positionCtrl(posvel, actuatorCmds)
 {}
 
-void FlightController::setup() {
-    imu.setup();
+void FlightController::setup(int IMU_FREQ_HZ) {
+    imu.setup(IMU_FREQ_HZ);
     gnss.setup();
     barometer.setup();
 }

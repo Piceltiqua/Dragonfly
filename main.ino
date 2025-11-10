@@ -15,7 +15,7 @@ elapsedMicros GNSSTimer;
 elapsedMicros telemTimer;
 
 void setup() {
-    FC.begin();
+    FC.setup(IMU_FREQ_HZ);
 }
 
 void loop() {

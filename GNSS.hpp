@@ -8,6 +8,7 @@ public:
 
     void setup();
     void read();
+    void setReference(double lat0, double lon0, double alt0);
 
 private:
     static constexpr double a = 6378137.0;
@@ -16,7 +17,7 @@ private:
     double N0 = 0.0;
     double M0 = 0.0;
 
-    bool initialFix_ = false;
+    bool reference_ = false;
     bfs::Ubx ubx_{&Serial5};
     GNSSData& gnssData_;
 }

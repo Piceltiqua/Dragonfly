@@ -19,17 +19,11 @@ void GNSS::read() {
         gnssData_.numSV = ubx_.num_sv();
         gnssData_.fixType = static_cast<int>(ubx_.fix());
 
-
-        if (!initialFix_ && f == 6) {
-            gnssData_.lat0 = gnssData_.latGNSS;
-            gnssData_.lon0 = gnssData_.lonGNSS;
-            gnssData_.alt0 = gnssData_.altGNSS;
-            N0 = a / sqrt(1 - e2 * sin(gnssData_.lat0) * sin(gnssData_.lat0));
-            M0 = a * (1 - e2) / pow(1 - e2 * sin(gnssData_.lat0) * sin(gnssData_.lat0), 1.5);
-            initialFix_ = true;
+        if (!reference_ && gnssData_.fixType == 6) {
+            setReference(gnssData_.latGNSS, gnssData_.lonGNSS, gnssData_.altGNSS);
         }
-
-        if (initialFix_) {
+        
+        if (reference_) {
             gnssData_.n = (lat - gnssData_.lat0) * (gnssData_.M0 + gnssData_.alt0);
             gnssData_.e = (lon - gnssData_.lon0) * (gnssData_.N0 + gnssData_.alt0) * cos(gnssData_.lat0);
             gnssData_.d = (gnssData_.alt0 - alt);
@@ -39,4 +33,13 @@ void GNSS::read() {
             gnssData_.d = 0;
         }
     }
+}
+
+void GNSS::setReference(double lat0, double lon0, double alt0) {
+    gnssData_.lat0 = lat0;
+    gnssData_.lon0 = lon0;
+    gnssData_.alt0 = alt0;
+    N0 = a / sqrt(1 - e2 * sin(gnssData_.lat0) * sin(gnssData_.lat0));
+    M0 = a * (1 - e2) / pow(1 - e2 * sin(gnssData_.lat0) * sin(gnssData_.lat0), 1.5);
+    reference_ = true;
 }

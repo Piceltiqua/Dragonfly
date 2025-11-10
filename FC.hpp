@@ -8,11 +8,21 @@
 
 #include "utils.hpp"
 
+enum class FCState {
+    NoFix,
+    Idle,
+    TakingOff,
+    AttitudeHold,
+    PositionHold,
+    WaypointGuidance,
+    Landing
+};
+
 class FlightController {
 public:
     FlightController();
 
-    void setup();
+    void setup(int IMU_FREQ_HZ);
     void attitudeUpdate();
     void positionUpdate();
     void telemetryUpdate();
