@@ -4,9 +4,9 @@ IMU::setup(int IMU_FREQ_HZ) {
     Serial4.begin(115200);
     bno08x_.begin_UART(&Serial4);
 
-    bno08x_.enableReport(SH2_LINEAR_ACCELERATION, 1000000 / IMU_FREQ_HZ);
-    bno08x_.enableReport(SH2_ROTATION_VECTOR, 1000000 / IMU_FREQ_HZ);
-    bno08x_.enableReport(SH2_GYROSCOPE_CALIBRATED, 1000000 / IMU_FREQ_HZ);
+    bno08x_.enableReport(SH2_LINEAR_ACCELERATION,   1000000 / IMU_FREQ_HZ);
+    bno08x_.enableReport(SH2_ROTATION_VECTOR,       1000000 / IMU_FREQ_HZ);
+    bno08x_.enableReport(SH2_GYROSCOPE_CALIBRATED,  1000000 / IMU_FREQ_HZ);
 }
 
 IMU::read() {

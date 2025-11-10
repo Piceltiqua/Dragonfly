@@ -1,6 +1,6 @@
 #pragma once
 #include <TinyMatrix.h>
-#include "utils.hpp"
+#include "Utils.hpp"
 
 #define N_STATE 6
 #define N_GNSS 3
@@ -40,9 +40,8 @@ public:
                  float wx, float wy, float wz,
                  float dt);
 
-    void updateGNSS(const Matrix<3,1> &z);
-    void updateBarometer(const Matrix<3,1> &z);
-    void updateLidar(const Matrix<1,1> &z);
+    void updateGNSS(const Matrix<N_GNSS,1> &z_meas, float horizontal_accuracy, float vertical_accuracy);
+    void updateBarometer(float z_meas);
 
 private:
     void fx(Matrix<N_STATE,1> &x_in_out,

@@ -6,7 +6,7 @@
 #include "AttitudeController.hpp"
 #include "PositionController.hpp"
 
-#include "utils.hpp"
+#include "Utils.hpp"
 
 enum class FCState {
     NoFix,

@@ -181,27 +181,3 @@ void UKF::updateBarometer(float z_meas)
     pos += K * y;
     P -= K * S * K.transpose();
 }
-
-void UKF::updateLidar(float z_meas)
-{
-    // Propagate sigma points through measurement model
-    Matrix<N_LIDAR, N_SIGMA> Z_sigma;
-    for (int i = 0; i < N_SIGMA; i++) {
-        Z_sigma(0, i) = sigma(2, i); // pz
-    }
-
-    // Compute predicted measurement mean and covariance
-    Matrix<N_LIDAR,1> z_pred = weightedMean<N_LIDAR>(Z_sigma);
-    Matrix<N_LIDAR,N_LIDAR> S = weightedCovariance<N_LIDAR, N_LIDAR>(Z_sigma, z_pred, Z_sigma, z_pred);
-    Matrix<N_STATE,N_LIDAR> P_xz = weightedCovariance<N_STATE, N_LIDAR>(sigmaMat, pos, Z_sigma, z_pred);
-
-    S += R_Baro;
-    
-    // Kalman gain
-    Matrix<N_STATE,N_LIDAR> K = P_xz * S.inverse();
-
-    // Update state and covariance
-    Matrix<N_LIDAR,1> y = z_meas - z_pred; // innovation
-    pos += K * y;
-    P -= K * S * K.transpose();
-}
