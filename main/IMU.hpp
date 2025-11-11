@@ -4,14 +4,16 @@
 #include "Utils.hpp"
 #include <Adafruit_BNO08x.h>
 
+#define IMU_TIMEOUT 1000
+
 class IMU {
 public:
     IMU(IMUAcceleration &imuAcc, Attitude &attitude):
     imuAcc_(imuAcc),
-    position_(position)
+    attitude_(attitude)
     {}
 
-    void setup(int IMU_FREQ_HZ);
+    void setup(int imu_freq);
     void read();
 
 private:
@@ -20,5 +22,11 @@ private:
     
     IMUAcceleration &imuAcc_;
     Attitude &attitude_;
-}
+
+    uint32_t t0;
+    bool acc;
+    bool gyro;
+    bool quat;
+};
+
 #endif

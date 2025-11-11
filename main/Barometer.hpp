@@ -6,6 +6,7 @@
 #include <Adafruit_Sensor.h>
 #include "Adafruit_BMP3XX.h"
 
+#define SEALEVELPRESSURE_HPA 1013.25
 #define BMP_SCK 13
 #define BMP_MISO 12
 #define BMP_MOSI 11
@@ -17,12 +18,12 @@ public:
 
     void setup();
     void read();
-    void setReference(float pressure)
+    void setReference(float altitude);
 
 private:
     Adafruit_BMP3XX bmp_;
-    bool ReferenceSet = false;
-    float ReferencePressure;
+    bool referenceSet = false;
+    float referenceAltitude;
 
     BarometerData &baroData_;
 };

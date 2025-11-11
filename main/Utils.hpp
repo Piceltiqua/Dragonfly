@@ -21,12 +21,12 @@ struct Attitude {
 };
 
 struct IMUAcceleration {
-    float accX = 0.0f;
-    float accY = 0.0f;
-    float accZ = 0.0f;
-    float accN = 0.0f;
-    float accE = 0.0f;
-    float accD = 0.0f;
+    float ax = 0.0f;
+    float ay = 0.0f;
+    float az = 0.0f;
+    float an = 0.0f;
+    float ae = 0.0f;
+    float ad = 0.0f;
 };
 
 struct GNSSData {
@@ -36,6 +36,9 @@ struct GNSSData {
     double lat0 = 0.0;
     double lon0 = 0.0;
     double alt0 = 0.0;
+    float posNGNSS = 0.0f;
+    float posEGNSS = 0.0f;
+    float posDGNSS = 0.0f;
     float velNGNSS = 0.0f;
     float velEGNSS = 0.0f;
     float velDGNSS = 0.0f;
