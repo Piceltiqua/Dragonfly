@@ -1,4 +1,6 @@
-#pragma once
+#ifndef BAROMETER_H
+#define BAROMETER_H
+
 #include "Utils.hpp"
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
@@ -24,3 +26,5 @@ private:
 
     BarometerData &baroData_;
 };
+
+#endif

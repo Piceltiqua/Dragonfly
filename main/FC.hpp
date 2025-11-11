@@ -1,10 +1,12 @@
-#pragma once
+#ifndef FC_H
+#define FC_H
+
 #include "IMU.hpp"
 #include "GNSS.hpp"
-#include "UKF.hpp"
 #include "Barometer.hpp"
-#include "AttitudeController.hpp"
-#include "PositionController.hpp"
+//#include "UKF.hpp"
+//#include "AttitudeController.hpp"
+//#include "PositionController.hpp"
 
 #include "Utils.hpp"
 
@@ -23,17 +25,21 @@ public:
     FlightController();
 
     void setup(int IMU_FREQ_HZ);
-    void attitudeUpdate();
-    void positionUpdate();
-    void telemetryUpdate();
+    void readSensors();
+    //void attitudeUpdate();
+    //void positionUpdate();
+    //void telemetryUpdate();
 
 private:
+    void printSensors();
+
     IMU imu;
     GNSS gnss;
-    UKF ukf;
     Barometer barometer;
-    AttitudeController attCtrl;
-    PositionController posCtrl;
+
+    //UKF ukf;
+    //AttitudeController attCtrl;
+    //PositionController posCtrl;
 
     PosVel posvel;
     Attitude attitude;
@@ -44,3 +50,4 @@ private:
     ActuatorCommands actuators;
 };
 
+#endif

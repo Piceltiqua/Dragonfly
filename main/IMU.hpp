@@ -1,4 +1,6 @@
-#pragma once
+#ifndef IMU_H
+#define IMU_H
+
 #include "Utils.hpp"
 #include <Adafruit_BNO08x.h>
 
@@ -19,3 +21,4 @@ private:
     IMUAcceleration &imuAcc_;
     Attitude &attitude_;
 }
+#endif

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef GNSS_H
+#define GNSS_H
+
 #include "Utils.hpp"
 #include "ubx.h"
 
@@ -21,3 +23,4 @@ private:
     bfs::Ubx ubx_{&Serial5};
     GNSSData& gnssData_;
 }
+#endif
