@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UTILS_H
+#define UTILS_H
 
 struct PosVel {
     float posN = 0.0f;
@@ -62,3 +63,5 @@ struct ActuatorCommands {
     float servoXAngle = 0.0f;
     float servoYAngle = 0.0f;
 };
+
+#endif
