@@ -4,9 +4,9 @@ void IMU::setup(int imu_freq) {
     Serial4.begin(115200);
     bno08x_.begin_UART(&Serial4);
 
-    bno08x_.enableReport(SH2_LINEAR_ACCELERATION,   1000000 / imu_freq);
-    bno08x_.enableReport(SH2_ROTATION_VECTOR,       1000000 / imu_freq);
-    bno08x_.enableReport(SH2_GYROSCOPE_CALIBRATED,  1000000 / imu_freq);
+    bno08x_.enableReport(SH2_LINEAR_ACCELERATION, 1000000 / imu_freq);
+    bno08x_.enableReport(SH2_ROTATION_VECTOR, 1000000 / imu_freq);
+    bno08x_.enableReport(SH2_GYROSCOPE_CALIBRATED, 1000000 / imu_freq);
 }
 
 void IMU::read() {
@@ -29,10 +29,10 @@ void IMU::read() {
 
             case SH2_ROTATION_VECTOR:
                 if (!quat) {
-                    attitude_.q0 = sensorValue.un.rotationVector.real;
-                    attitude_.q1 = sensorValue.un.rotationVector.i;
-                    attitude_.q2 = sensorValue.un.rotationVector.j;
-                    attitude_.q3 = sensorValue.un.rotationVector.k;
+                    attitude_.qw = sensorValue.un.rotationVector.real;
+                    attitude_.qi = sensorValue.un.rotationVector.i;
+                    attitude_.qj = sensorValue.un.rotationVector.j;
+                    attitude_.qk = sensorValue.un.rotationVector.k;
                     quat = true;
                 }
                 break;
@@ -54,6 +54,5 @@ void IMU::read() {
         if ((acc && gyro && quat) || micros() - t0 > IMU_TIMEOUT) {
             break;
         };
-
     }
 }
