@@ -3,10 +3,10 @@
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(gnssData),
-      barometer(baroData)
-      //ukf(posvel, attitude, imuAcc, gnssData, barometerData),
+      barometer(barometerData),
+      ukf(posvel, attitude, imuAcc, gnssData, barometerData)
       //attitudeCtrl(attitude, actuatorCmds),
-      //positionCtrl(posvel, actuatorCmds)
+      //positionCtrl(posvel, targetAttitude, waypoints)
 {}
 
 void FlightController::setup() {
@@ -18,27 +18,52 @@ void FlightController::setup() {
     delay(1000);
 }
 
-void FlightController::readSensors() {
+void FlightController::sensorFusion() {
     // Attitude loop
     if (IMUTimer >= IMU_PERIOD_US) {
         IMUTimer -= IMU_PERIOD_US;
-        imu.read();
         gnssReading = gnss.read();
-      
+
+        imu.read();
+        if (gnssData.fixType == 6) {
+            ukf.predict(IMU_PERIOD_US);
+        }
+        
+                
         // Update battery level
     }
 
     // Position loop
     if (gnssReading) {
         barometer.read();
+        if (gnssData.fixType == 6) {
+            ukf.updateBarometer();
+            ukf.updateGNSS();
+        }
+
     }
 
     // Telemetry loop
     if (telemTimer >= TELEMETRY_PERIOD_US) {
-        telemTimer -= TELEMETRY_PERIOD_US;
-        printSensors();
+        telemTimer -= TELEMETRY_PERIOD_US;        
+        if (gnssData.fixType == 6) {
+            printState();
+        }
+        else {
+            printSensors();
+        }
     }
 }
+void FlightController::printState() {
+    Serial.print(millis());    Serial.print(",");
+    Serial.print(posvel.posN);    Serial.print(",");
+    Serial.print(posvel.posE);    Serial.print(",");
+    Serial.print(posvel.posD);    Serial.print(",");
+    Serial.print(posvel.velN);    Serial.print(",");
+    Serial.print(posvel.velE);    Serial.print(",");
+    Serial.print(posvel.velD);    Serial.println();
+}
+
 
 void FlightController::printSensors() {
     Serial.print(millis());    Serial.print(",");
@@ -65,5 +90,5 @@ void FlightController::printSensors() {
     Serial.print(gnssData.vertAcc);  Serial.print(",");
     Serial.print(gnssData.numSV);    Serial.print(",");
     Serial.print(gnssData.fixType);  Serial.print(",");
-    Serial.print(baroData.altBaro);  Serial.println();
+    Serial.print(barometerData.altBaro);  Serial.println();
 }

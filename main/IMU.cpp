@@ -11,7 +11,7 @@ void IMU::setup(int imu_freq) {
 
 void IMU::read() {
     t0 = micros();
-    acc = false;
+    acc  = false;
     gyro = false;
     quat = false;
 
@@ -20,28 +20,33 @@ void IMU::read() {
         switch (sensorValue.sensorId) {
             case SH2_LINEAR_ACCELERATION:
                 if (!acc) {
-                    imuAcc_.ax = sensorValue.un.linearAcceleration.x;
-                    imuAcc_.ay = sensorValue.un.linearAcceleration.y;
-                    imuAcc_.az = sensorValue.un.linearAcceleration.z;
+                    imuAcc_.ax = - sensorValue.un.linearAcceleration.y;
+                    imuAcc_.ay =   sensorValue.un.linearAcceleration.z;
+                    imuAcc_.az = - sensorValue.un.linearAcceleration.x;
                     acc = true;
                 }
                 break;
 
             case SH2_ROTATION_VECTOR:
                 if (!quat) {
-                    attitude_.q0 = sensorValue.un.rotationVector.real;
-                    attitude_.q1 = sensorValue.un.rotationVector.i;
-                    attitude_.q2 = sensorValue.un.rotationVector.j;
-                    attitude_.q3 = sensorValue.un.rotationVector.k;
+                    qIMU0 = sensorValue.un.rotationVector.real;
+                    qIMU1 = sensorValue.un.rotationVector.i;
+                    qIMU2 = sensorValue.un.rotationVector.j;
+                    qIMU3 = sensorValue.un.rotationVector.k;
+
+                    attitude_.q0 = 0.5*(qIMU0 + qIMU1 + qIMU2 + qIMU3);
+                    attitude_.q1 = 0.5*(qIMU1 - qIMU0 - qIMU3 + qIMU2);
+                    attitude_.q2 = 0.5*(qIMU2 + qIMU3 - qIMU0 - qIMU1);
+                    attitude_.q3 = 0.5*(qIMU3 - qIMU2 + qIMU1 - qIMU0);
                     quat = true;
                 }
                 break;
 
             case SH2_GYROSCOPE_CALIBRATED:
                 if (!gyro) {
-                    attitude_.wx = sensorValue.un.gyroscope.x;
-                    attitude_.wy = sensorValue.un.gyroscope.y;
-                    attitude_.wz = sensorValue.un.gyroscope.z;
+                    attitude_.wx = - sensorValue.un.gyroscope.y;
+                    attitude_.wy =   sensorValue.un.gyroscope.z;
+                    attitude_.wz = - sensorValue.un.gyroscope.x;
                     gyro = true;
                 }
                 break;

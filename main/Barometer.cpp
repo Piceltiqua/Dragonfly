@@ -14,7 +14,7 @@ void Barometer::read() {
         if (!referenceSet) {
             setReference(bmp_.readAltitude(SEALEVELPRESSURE_HPA));
         }
-        baroData_.altBaro = referenceAltitude - bmp_.readAltitude(SEALEVELPRESSURE_HPA);
+        barometerData_.altBaro = referenceAltitude - bmp_.readAltitude(SEALEVELPRESSURE_HPA);
     }
 }
 

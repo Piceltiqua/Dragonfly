@@ -4,17 +4,15 @@
 #include "IMU.hpp"
 #include "GNSS.hpp"
 #include "Barometer.hpp"
-//#include "UKF.hpp"
+#include "UKF.hpp"
 //#include "AttitudeController.hpp"
 //#include "PositionController.hpp"
 
 #define IMU_FREQ_HZ      250
-#define GNSS_FREQ_HZ      10
-#define TELEMETRY_FREQ_HZ 25
+#define TELEMETRY_FREQ_HZ 20
 
-#define IMU_PERIOD_US             (1000000 / IMU_FREQ_HZ)
-#define GNSS_PERIOD_US           (1000000 / GNSS_FREQ_HZ)
-#define TELEMETRY_PERIOD_US (1000000 / TELEMETRY_FREQ_HZ)
+#define IMU_PERIOD_US             (1000000.0 / IMU_FREQ_HZ)
+#define TELEMETRY_PERIOD_US (1000000.0 / TELEMETRY_FREQ_HZ)
 
 #include "Utils.hpp"
 
@@ -33,19 +31,17 @@ public:
     FlightController();
 
     void setup();
-    void readSensors();
-    //void attitudeUpdate();
-    //void positionUpdate();
-    //void telemetryUpdate();
+    void sensorFusion();
 
 private:
+    void printState();
     void printSensors();
 
     IMU imu;
     GNSS gnss;
     Barometer barometer;
 
-    //UKF ukf;
+    UKF ukf;
     //AttitudeController attCtrl;
     //PositionController posCtrl;
 
@@ -57,7 +53,7 @@ private:
     Attitude attitude;
     IMUAcceleration imuAcc;
     GNSSData gnssData;
-    BarometerData baroData;
+    BarometerData barometerData;
     BatteryStatus battery;
     ActuatorCommands actuators;
 };

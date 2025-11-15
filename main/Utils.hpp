@@ -62,7 +62,7 @@ struct BatteryStatus {
 struct ActuatorCommands {
     float motor1Throttle = 0.0f;
     float motor2Throttle = 0.0f;
-    bool  legsPosition = true; // false: retracted, true: deployed
+    bool  legsExtended = true; // false: retracted, true: extended
     float servoXAngle = 0.0f;
     float servoYAngle = 0.0f;
 };

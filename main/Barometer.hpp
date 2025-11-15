@@ -14,7 +14,7 @@
 
 class Barometer {
 public:
-    Barometer(BarometerData &baroData) : baroData_(baroData) {}
+    Barometer(BarometerData &barometerData) : barometerData_(barometerData) {}
 
     void setup();
     void read();
@@ -25,7 +25,7 @@ private:
     bool referenceSet = false;
     float referenceAltitude;
 
-    BarometerData &baroData_;
+    BarometerData &barometerData_;
 };
 
 #endif

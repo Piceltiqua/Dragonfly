@@ -24,9 +24,8 @@ private:
     Attitude &attitude_;
 
     uint32_t t0;
-    bool acc;
-    bool gyro;
-    bool quat;
+    bool acc, gyro, quat;
+    float qIMU0, qIMU1, qIMU2, qIMU3;
 };
 
 #endif
