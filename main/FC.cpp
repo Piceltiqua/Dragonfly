@@ -1,396 +1,416 @@
 #include "FC.hpp"
 
 FlightController::FlightController()
-    : imu(imuAcc, attitude),
-      gnss(gnssData),
-      barometer(baroData)
+  : imu(imuAcc, attitude),
+    gnss(gnssData),
+    barometer(baroData)
 // ukf(posvel, attitude, imuAcc, gnssData, barometerData),
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, actuatorCmds)
 {}
 
 void FlightController::setup() {
-    Serial.begin(115200);
-    imu.setup(IMU_FREQ_HZ);
-    gnss.setup();
-    barometer.setup();
+  imu.setup(IMU_FREQ_HZ);
+  gnss.setup();
+  barometer.setup();
+  command.setup();
 
-    delay(1000);
+  //Serial.begin(115200);
+  Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
+  delay(1000);
 }
 
 void FlightController::readSensors() {
-    // Attitude loop
-    if (IMUTimer >= IMU_PERIOD_US) {
-        IMUTimer -= IMU_PERIOD_US;
-        imu.read();
-        gnssReading = gnss.read();
 
-        // Update battery level
+  while (Serial1.available()) {
+      int b = Serial1.read();
+      if (b >= 0) processIncomingByte((uint8_t)b);
     }
 
-    // Position loop
-    if (gnssReading) {
-        barometer.read();
-    }
+  // Attitude loop
+  if (IMUTimer >= IMU_PERIOD_US) {
+    // Receive commands
+    
 
-    // Telemetry loop
-    if (telemTimer >= TELEMETRY_PERIOD_US) {
-        telemTimer -= TELEMETRY_PERIOD_US;
-        printSensors();
-    }
+    IMUTimer -= IMU_PERIOD_US;
+    imu.read();
+    gnssReading = gnss.read();
+
+    // Update battery level
+  }
+
+  // Position loop
+  if (gnssReading) {
+    barometer.read();
+  }
+
+  // Telemetry loop
+  if (telemTimer >= TELEMETRY_PERIOD_US) {
+    telemTimer -= TELEMETRY_PERIOD_US;
+    // Serial1.println("Test Serial1");
+    sendTelemetry();
+  }
 }
 
 void FlightController::printSensors() {
-    Serial.print(millis());
-    Serial.print(",");
-    Serial.print(attitude.qw);
-    Serial.print(",");
-    Serial.print(attitude.qi);
-    Serial.print(",");
-    Serial.print(attitude.qj);
-    Serial.print(",");
-    Serial.print(attitude.qk);
-    Serial.print(",");
-    Serial.print(attitude.wx);
-    Serial.print(",");
-    Serial.print(attitude.wy);
-    Serial.print(",");
-    Serial.print(attitude.wz);
-    Serial.print(",");
-    Serial.print(imuAcc.ax);
-    Serial.print(",");
-    Serial.print(imuAcc.ay);
-    Serial.print(",");
-    Serial.print(imuAcc.az);
-    Serial.print(",");
-    Serial.print(gnssData.lat);
-    Serial.print(",");
-    Serial.print(gnssData.lon);
-    Serial.print(",");
-    Serial.print(gnssData.alt);
-    Serial.print(",");
-    Serial.print(gnssData.posN);
-    Serial.print(",");
-    Serial.print(gnssData.posE);
-    Serial.print(",");
-    Serial.print(gnssData.posD);
-    Serial.print(",");
-    Serial.print(gnssData.velN);
-    Serial.print(",");
-    Serial.print(gnssData.velE);
-    Serial.print(",");
-    Serial.print(gnssData.velD);
-    Serial.print(",");
-    Serial.print(gnssData.horAcc);
-    Serial.print(",");
-    Serial.print(gnssData.vertAcc);
-    Serial.print(",");
-    Serial.print(gnssData.numSV);
-    Serial.print(",");
-    Serial.print(gnssData.fixType);
-    Serial.print(",");
-    Serial.print(baroData.altBaro);
-    Serial.println();
+  Serial.print(millis());
+  Serial.print(",");
+  Serial.print(attitude.qw);
+  Serial.print(",");
+  Serial.print(attitude.qi);
+  Serial.print(",");
+  Serial.print(attitude.qj);
+  Serial.print(",");
+  Serial.print(attitude.qk);
+  Serial.print(",");
+  Serial.print(attitude.wx);
+  Serial.print(",");
+  Serial.print(attitude.wy);
+  Serial.print(",");
+  Serial.print(attitude.wz);
+  Serial.print(",");
+  Serial.print(imuAcc.ax);
+  Serial.print(",");
+  Serial.print(imuAcc.ay);
+  Serial.print(",");
+  Serial.print(imuAcc.az);
+  Serial.print(",");
+  Serial.print(gnssData.lat);
+  Serial.print(",");
+  Serial.print(gnssData.lon);
+  Serial.print(",");
+  Serial.print(gnssData.alt);
+  Serial.print(",");
+  Serial.print(gnssData.posN);
+  Serial.print(",");
+  Serial.print(gnssData.posE);
+  Serial.print(",");
+  Serial.print(gnssData.posD);
+  Serial.print(",");
+  Serial.print(gnssData.velN);
+  Serial.print(",");
+  Serial.print(gnssData.velE);
+  Serial.print(",");
+  Serial.print(gnssData.velD);
+  Serial.print(",");
+  Serial.print(gnssData.horAcc);
+  Serial.print(",");
+  Serial.print(gnssData.vertAcc);
+  Serial.print(",");
+  Serial.print(gnssData.numSV);
+  Serial.print(",");
+  Serial.print(gnssData.fixType);
+  Serial.print(",");
+  Serial.print(baroData.altBaro);
+  Serial.println();
 }
 
 uint16_t FlightController::crc16_ccitt(const uint8_t* data, size_t len) {
-    uint16_t crc = 0xFFFF;
-    for (size_t i = 0; i < len; ++i) {
-        crc ^= (uint16_t)data[i] << 8;
-        for (int j = 0; j < 8; j++) {
-            if (crc & 0x8000)
-                crc = (crc << 1) ^ 0x1021;
-            else
-                crc <<= 1;
-        }
+  uint16_t crc = 0xFFFF;
+  for (size_t i = 0; i < len; ++i) {
+    crc ^= (uint16_t)data[i] << 8;
+    for (int j = 0; j < 8; j++) {
+      if (crc & 0x8000)
+        crc = (crc << 1) ^ 0x1021;
+      else
+        crc <<= 1;
     }
-    return crc;
+  }
+  return crc;
 }
 
 void FlightController::writeEscapedByte(uint8_t b) {
-    if (b == STX || b == DLE) {
-        Serial1.write(DLE);
-        Serial1.write(b ^ XOR_MASK);
-    } else {
-        Serial1.write(b);
-    }
+  if (b == STX || b == DLE) {
+    Serial1.write(DLE);
+    Serial1.write(b ^ XOR_MASK);
+  } else {
+    Serial1.write(b);
+  }
 }
 
 void FlightController::sendRawFramed(const uint8_t* unescaped, size_t unescapedLen) {
-    Serial1.write(STX);
-    for (size_t i = 0; i < unescapedLen; ++i) writeEscapedByte(unescaped[i]);
-    Serial1.write(STX);
-    Serial1.flush();
+  Serial1.write(STX);
+  for (size_t i = 0; i < unescapedLen; ++i) writeEscapedByte(unescaped[i]);
+  Serial1.write(STX);
+  Serial1.flush();
 }
 
 void FlightController::sendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen) {
-    // build unescaped buffer: len_low, len_hi, payloadWithCrc
-    uint8_t framed[2 + 1024];
-    framed[0] = payloadLen & 0xFF;
-    framed[1] = (payloadLen >> 8) & 0xFF;
-    memcpy(framed + 2, payloadWithCrc, payloadLen);
-    sendRawFramed(framed, 2 + payloadLen);
+  // build unescaped buffer: len_low, len_hi, payloadWithCrc
+  uint8_t framed[2 + 1024];
+  framed[0] = payloadLen & 0xFF;
+  framed[1] = (payloadLen >> 8) & 0xFF;
+  memcpy(framed + 2, payloadWithCrc, payloadLen);
+  sendRawFramed(framed, 2 + payloadLen);
 }
 
 void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
-    uint8_t* p = buf;
-    // message type
-    *p++ = MSG_DATA;
+  uint8_t* p = buf;
+  // message type
+  *p++ = MSG_DATA;
 
-    // append floats/doubles etc. use memcpy to preserve bit patterns
-    memcpy(p, &posvel.posN, sizeof(posvel.posN));
-    p += sizeof(posvel.posN);
-    memcpy(p, &posvel.posE, sizeof(posvel.posE));
-    p += sizeof(posvel.posE);
-    memcpy(p, &posvel.posD, sizeof(posvel.posD));
-    p += sizeof(posvel.posD);
-    memcpy(p, &posvel.velN, sizeof(posvel.velN));
-    p += sizeof(posvel.velN);
-    memcpy(p, &posvel.velE, sizeof(posvel.velE));
-    p += sizeof(posvel.velE);
-    memcpy(p, &posvel.velD, sizeof(posvel.velD));
-    p += sizeof(posvel.velD);
+  // append floats/doubles etc. use memcpy to preserve bit patterns
+  memcpy(p, &posvel.posN, sizeof(posvel.posN));
+  p += sizeof(posvel.posN);
+  memcpy(p, &posvel.posE, sizeof(posvel.posE));
+  p += sizeof(posvel.posE);
+  memcpy(p, &posvel.posD, sizeof(posvel.posD));
+  p += sizeof(posvel.posD);
+  memcpy(p, &posvel.velN, sizeof(posvel.velN));
+  p += sizeof(posvel.velN);
+  memcpy(p, &posvel.velE, sizeof(posvel.velE));
+  p += sizeof(posvel.velE);
+  memcpy(p, &posvel.velD, sizeof(posvel.velD));
+  p += sizeof(posvel.velD);
 
-    memcpy(p, &imuAcc.ax, sizeof(imuAcc.ax));
-    p += sizeof(imuAcc.ax);
-    memcpy(p, &imuAcc.ay, sizeof(imuAcc.ay));
-    p += sizeof(imuAcc.ay);
-    memcpy(p, &imuAcc.az, sizeof(imuAcc.az));
-    p += sizeof(imuAcc.az);
+  memcpy(p, &imuAcc.ax, sizeof(imuAcc.ax));
+  p += sizeof(imuAcc.ax);
+  memcpy(p, &imuAcc.ay, sizeof(imuAcc.ay));
+  p += sizeof(imuAcc.ay);
+  memcpy(p, &imuAcc.az, sizeof(imuAcc.az));
+  p += sizeof(imuAcc.az);
 
-    memcpy(p, &attitude.wx, sizeof(attitude.wx));
-    p += sizeof(attitude.wx);
-    memcpy(p, &attitude.wy, sizeof(attitude.wy));
-    p += sizeof(attitude.wy);
-    memcpy(p, &attitude.wz, sizeof(attitude.wz));
-    p += sizeof(attitude.wz);
+  memcpy(p, &attitude.wx, sizeof(attitude.wx));
+  p += sizeof(attitude.wx);
+  memcpy(p, &attitude.wy, sizeof(attitude.wy));
+  p += sizeof(attitude.wy);
+  memcpy(p, &attitude.wz, sizeof(attitude.wz));
+  p += sizeof(attitude.wz);
 
-    memcpy(p, &attitude.qw, sizeof(attitude.qw));
-    p += sizeof(attitude.qw);
-    memcpy(p, &attitude.qi, sizeof(attitude.qi));
-    p += sizeof(attitude.qi);
-    memcpy(p, &attitude.qj, sizeof(attitude.qj));
-    p += sizeof(attitude.qj);
-    memcpy(p, &attitude.qk, sizeof(attitude.qk));
-    p += sizeof(attitude.qk);
+  memcpy(p, &attitude.qw, sizeof(attitude.qw));
+  p += sizeof(attitude.qw);
+  memcpy(p, &attitude.qi, sizeof(attitude.qi));
+  p += sizeof(attitude.qi);
+  memcpy(p, &attitude.qj, sizeof(attitude.qj));
+  p += sizeof(attitude.qj);
+  memcpy(p, &attitude.qk, sizeof(attitude.qk));
+  p += sizeof(attitude.qk);
 
-    memcpy(p, &gnssData.lat, sizeof(gnssData.lat));
-    p += sizeof(gnssData.lat);
-    memcpy(p, &gnssData.lon, sizeof(gnssData.lon));
-    p += sizeof(gnssData.lon);
-    memcpy(p, &gnssData.alt, sizeof(gnssData.alt));
-    p += sizeof(gnssData.alt);
+  memcpy(p, &gnssData.lat, sizeof(gnssData.lat));
+  p += sizeof(gnssData.lat);
+  memcpy(p, &gnssData.lon, sizeof(gnssData.lon));
+  p += sizeof(gnssData.lon);
+  memcpy(p, &gnssData.alt, sizeof(gnssData.alt));
+  p += sizeof(gnssData.alt);
 
-    memcpy(p, &gnssData.horAcc, sizeof(gnssData.horAcc));
-    p += sizeof(gnssData.horAcc);
-    memcpy(p, &gnssData.vertAcc, sizeof(gnssData.vertAcc));
-    p += sizeof(gnssData.vertAcc);
+  memcpy(p, &gnssData.horAcc, sizeof(gnssData.horAcc));
+  p += sizeof(gnssData.horAcc);
+  memcpy(p, &gnssData.vertAcc, sizeof(gnssData.vertAcc));
+  p += sizeof(gnssData.vertAcc);
 
-    *p++ = gnssData.numSV;
-    *p++ = gnssData.fixType;
+  *p++ = gnssData.numSV;
+  *p++ = gnssData.fixType;
 
-    memcpy(p, &baroData.altBaro, sizeof(baroData.altBaro));
-    p += sizeof(baroData.altBaro);
+  memcpy(p, &baroData.altBaro, sizeof(baroData.altBaro));
+  p += sizeof(baroData.altBaro);
 
-    memcpy(p, &battery.currentDraw, sizeof(battery.currentDraw));
-    p += sizeof(battery.currentDraw);
-    memcpy(p, &battery.currentConsumed, sizeof(battery.currentConsumed));
-    p += sizeof(battery.currentConsumed);
-    memcpy(p, &battery.batteryVoltage, sizeof(battery.batteryVoltage));
-    p += sizeof(battery.batteryVoltage);
-    *p++ = battery.batteryLevel;
+  memcpy(p, &battery.currentDraw, sizeof(battery.currentDraw));
+  p += sizeof(battery.currentDraw);
+  memcpy(p, &battery.currentConsumed, sizeof(battery.currentConsumed));
+  p += sizeof(battery.currentConsumed);
+  memcpy(p, &battery.batteryVoltage, sizeof(battery.batteryVoltage));
+  p += sizeof(battery.batteryVoltage);
+  *p++ = battery.batteryLevel;
 
-    uint32_t UPTIME = millis();
-    memcpy(p, &UPTIME, sizeof(UPTIME));
-    p += sizeof(UPTIME);
+  uint32_t UPTIME = millis();
+  memcpy(p, &UPTIME, sizeof(UPTIME));
+  p += sizeof(UPTIME);
 
-    memcpy(p, &actuators.motor1Throttle, sizeof(actuators.motor1Throttle));
-    p += sizeof(actuators.motor1Throttle);
-    memcpy(p, &actuators.motor2Throttle, sizeof(actuators.motor2Throttle));
-    p += sizeof(actuators.motor2Throttle);
+  memcpy(p, &actuators.motor1Throttle, sizeof(actuators.motor1Throttle));
+  p += sizeof(actuators.motor1Throttle);
+  memcpy(p, &actuators.motor2Throttle, sizeof(actuators.motor2Throttle));
+  p += sizeof(actuators.motor2Throttle);
 
-    *p++ = actuators.legsPosition;
+  *p++ = actuators.legsPosition;
 
-    memcpy(p, &actuators.servoXAngle, sizeof(actuators.servoXAngle));
-    p += sizeof(actuators.servoXAngle);
-    memcpy(p, &actuators.servoYAngle, sizeof(actuators.servoYAngle));
-    p += sizeof(actuators.servoYAngle);
+  memcpy(p, &actuators.servoXAngle, sizeof(actuators.servoXAngle));
+  p += sizeof(actuators.servoXAngle);
+  memcpy(p, &actuators.servoYAngle, sizeof(actuators.servoYAngle));
+  p += sizeof(actuators.servoYAngle);
 
-    outLen = p - buf;
+  outLen = p - buf;
 }
 
 void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
-    // payload[0] = message_type
-    if (payloadLen < 1) return;
-    uint8_t header = payload[0];
-    // commands mapping:
-    switch (header) {
-        case MSG_FLY:
-            // start flight
-            // implement your flight start logic here
-            // NOTE: we already echoed the frame back before executing
+  // payload[0] = message_type
+  if (payloadLen < 1) return;
+  uint8_t header = payload[0];
+  // commands mapping:
+  switch (header) {
+    case MSG_FLY:
+      // start flight
+      // implement your flight start logic here
+      // NOTE: we already echoed the frame back before executing
+      command.setLedColor(0, 0, 0);
+      // 
+      break;
 
-            break;
-
-        case MSG_LEG: {
-            if (payloadLen >= 2) {
-                uint8_t val = payload[1];
-                // val will be 0x9D or 0xA9 per GUI
-                // implement leg actuation: map to your hardware
-                actuators.legsPosition = (val == 0x9D) ? 0xFE : 0xFA;  // example: set state to deployed/retracted
-            }
-            break;
+    case MSG_LEG:
+      {
+        if (payloadLen >= 2) {
+          uint8_t val = payload[1];
+          // val will be 0x9D or 0xA9 per GUI
+          // implement leg actuation: map to your hardware
+          actuators.legsPosition = (val == 0x9D) ? 0xFE : 0xFA;  // example: set state to deployed/retracted
         }
+        command.setLedColor(0, 0, 1);
+        break;
+      }
 
-        case MSG_BAT: {
-            if (payloadLen >= 3) {
-                uint16_t mah = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
-
-                // store/handle accordingly
-            }
-            break;
+    case MSG_BAT:
+      {
+        if (payloadLen >= 3) {
+          uint16_t mah = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
+          command.setLedColor(0, 1, 0);
+          // store/handle accordingly
         }
+        
+        break;
+      }
 
-        case MSG_CTRL:
-            if (payloadLen >= 2) {
-                uint8_t ctrl = payload[1];
+    case MSG_CTRL:
+      if (payloadLen >= 2) {
+        uint8_t ctrl = payload[1];
+        command.setLedColor(1, 0, 0);
+        // handle enabling/disabling controllers
+      }
+      
+      break;
 
-                // handle enabling/disabling controllers
-            }
-            break;
+    case MSG_ORIG:
+      // set origin logic + tare barometer
+      command.setLedColor(1, 0, 1);
+      break;
 
-        case MSG_ORIG:
-            // set origin logic + tare barometer
-            break;
+    case MSG_ENG:
+      if (payloadLen >= 3) {
+        uint8_t m1 = payload[1];
+        uint8_t m2 = payload[2];
+        command.setLedColor(1, 1, 0);
+        // set motor throttles (percent)
+      }
+      break;
 
-        case MSG_ENG:
-            if (payloadLen >= 3) {
-                uint8_t m1 = payload[1];
-                uint8_t m2 = payload[2];
+    case MSG_STOP:
+      // stop motors immediately
+      command.setLedColor(1, 1, 1);
+      break;
 
-                // set motor throttles (percent)
-            }
-            break;
+    case MSG_LAND:
+      // landing logic
+      break;
 
-        case MSG_STOP:
-            // stop motors immediately
-            break;
+    case MSG_REC:
+      if (payloadLen >= 2) {
+        uint8_t rec = payload[1];
+        if (rec == 0xE6) {  // start rec
+          if (!isRecording) {
+            isRecording = true;
+            // start sd logging
+          }
+        } else if (rec == 0xF1) {  // stop rec
+          if (isRecording) {
+            isRecording = false;
+            // stop sd logging
+          }
+        }
+      }
+      break;
 
-        case MSG_LAND:
-            // landing logic
-            break;
-
-        case MSG_REC:
-            if (payloadLen >= 2) {
-                uint8_t rec = payload[1];
-                if (rec == 0xE6) {  // start rec
-                    if (!isRecording) {
-                        isRecording = true;
-                        // start sd logging
-                    }
-                } else if (rec == 0xF1) {  // stop rec
-                    if (isRecording) {
-                        isRecording = false;
-                        // stop sd logging
-                    }
-                }
-            }
-            break;
-
-        default:
-            Serial.print("Unknown command type ");
-            Serial.println(header, HEX);
-            break;
-    }
+    default:
+      Serial.print("Unknown command type ");
+      Serial.println(header, HEX);
+      break;
+  }
 }
 
 void FlightController::processCompleteUnescapedFrame(const uint8_t* buf, size_t len) {
-    // buf[0..1] = len low, len high
-    if (len < 2) return;
-    uint16_t payloadLen = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
-    if (payloadLen + 2 != len) {
-        // mismatch (this shouldn't happen if caller provided correct unescaped len)
-        return;
-    }
-    const uint8_t* payloadWithCrc = buf + 2;
-    size_t payloadWithCrcLen = payloadLen;
-    if (payloadWithCrcLen < 3) return;  // needs at least type + crc
+  // buf[0..1] = len low, len high
+  if (len < 2) return;
+  uint16_t payloadLen = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
+  if (payloadLen + 2 != len) {
+    // mismatch (this shouldn't happen if caller provided correct unescaped len)
+    return;
+  }
+  const uint8_t* payloadWithCrc = buf + 2;
+  size_t payloadWithCrcLen = payloadLen;
+  if (payloadWithCrcLen < 3) return;  // needs at least type + crc
 
-    // verify CRC
-    uint16_t receivedCrc = (uint16_t)payloadWithCrc[payloadWithCrcLen - 2] | ((uint16_t)payloadWithCrc[payloadWithCrcLen - 1] << 8);
-    uint16_t calc = crc16_ccitt(payloadWithCrc, payloadWithCrcLen - 2);
-    if (receivedCrc != calc) {
-        Serial.println("Incoming CRC mismatch, dropping frame");
-        return;
-    }
+  // verify CRC
+  uint16_t receivedCrc = (uint16_t)payloadWithCrc[payloadWithCrcLen - 2] | ((uint16_t)payloadWithCrc[payloadWithCrcLen - 1] << 8);
+  uint16_t calc = crc16_ccitt(payloadWithCrc, payloadWithCrcLen - 2);
+  if (receivedCrc != calc) {
+    Serial.println("Incoming CRC mismatch, dropping frame");
+    return;
+  }
 
-    // if this is a command (not telemetry), echo it back immediately and then execute
-    uint8_t msgType = payloadWithCrc[0];
-    if (msgType != MSG_DATA) {
-        // echo the entire payloadWithCrc framed (len + payload) back as ack
-        uint8_t framed[2 + 1024];
-        framed[0] = (uint8_t)(payloadWithCrcLen & 0xFF);
-        framed[1] = (uint8_t)((payloadWithCrcLen >> 8) & 0xFF);
-        memcpy(framed + 2, payloadWithCrc, payloadWithCrcLen);
-        sendRawFramed(framed, 2 + payloadWithCrcLen);
+  // if this is a command (not telemetry), echo it back immediately and then execute
+  uint8_t msgType = payloadWithCrc[0];
+  if (msgType != MSG_DATA) {
+    // echo the entire payloadWithCrc framed (len + payload) back as ack
+    uint8_t framed[2 + 1024];
+    framed[0] = (uint8_t)(payloadWithCrcLen & 0xFF);
+    framed[1] = (uint8_t)((payloadWithCrcLen >> 8) & 0xFF);
+    memcpy(framed + 2, payloadWithCrc, payloadWithCrcLen);
+    sendRawFramed(framed, 2 + payloadWithCrcLen);
 
-        // execute command (Teensy executes every received command; REC handled idempotently)
-        executeCommandFromPayload(payloadWithCrc, payloadWithCrcLen);
-        return;
-    }
+    // execute command (Teensy executes every received command; REC handled idempotently)
+    executeCommandFromPayload(payloadWithCrc, payloadWithCrcLen);
+    return;
+  }
 }
 
 void FlightController::processIncomingByte(uint8_t b) {
-    if (!inFrame) {
-        if (b == STX) {
-            inFrame = true;
-            escapeNext = false;
-            frameBufLen = 0;
-        }
-        return;
+  if (!inFrame) {
+    if (b == STX) {
+      inFrame = true;
+      escapeNext = false;
+      frameBufLen = 0;
     }
-    if (escapeNext) {
-        uint8_t orig = b ^ XOR_MASK;
-        if (frameBufLen < MAX_FRAME_BUFFER) frameBuf[frameBufLen++] = orig;
-        escapeNext = false;
-    } else if (b == DLE) {
-        escapeNext = true;
-    } else if (b == STX) {
-        // end-of-frame (STX) encountered -> process frameBuf which contains unescaped bytes
-        // we pass to processCompleteUnescapedFrame if it looks valid
-        if (frameBufLen >= 2) {
-            uint16_t payloadLen = (uint16_t)frameBuf[0] | ((uint16_t)frameBuf[1] << 8);
-            if (payloadLen + 2 == frameBufLen) {
-                processCompleteUnescapedFrame(frameBuf, frameBufLen);
-            } else {
-                // partial or inconsistent frame; drop and resync
-            }
-        }
-        // reset and allow next frame
-        inFrame = false;
-        escapeNext = false;
-        frameBufLen = 0;
-    } else {
-        if (frameBufLen < MAX_FRAME_BUFFER) frameBuf[frameBufLen++] = b;
+    return;
+  }
+  if (escapeNext) {
+    uint8_t orig = b ^ XOR_MASK;
+    if (frameBufLen < MAX_FRAME_BUFFER) frameBuf[frameBufLen++] = orig;
+    escapeNext = false;
+  } else if (b == DLE) {
+    escapeNext = true;
+  } else if (b == STX) {
+    // end-of-frame (STX) encountered -> process frameBuf which contains unescaped bytes
+    // we pass to processCompleteUnescapedFrame if it looks valid
+    if (frameBufLen >= 2) {
+      uint16_t payloadLen = (uint16_t)frameBuf[0] | ((uint16_t)frameBuf[1] << 8);
+      if (payloadLen + 2 == frameBufLen) {
+        processCompleteUnescapedFrame(frameBuf, frameBufLen);
+      } else {
+        // partial or inconsistent frame; drop and resync
+      }
     }
+    // reset and allow next frame
+    inFrame = false;
+    escapeNext = false;
+    frameBufLen = 0;
+  } else {
+    if (frameBufLen < MAX_FRAME_BUFFER) frameBuf[frameBufLen++] = b;
+  }
 }
 
 void FlightController::sendTelemetry() {
-    // Build packed payload (message_type + fields) into a local buffer
-    uint8_t rawBuf[1024];
-    size_t payloadNoCrcLen = 0;
-    // reuse buildPackedPayload idea
-    buildPackedPayload(rawBuf + 0, payloadNoCrcLen);  // returns payloadNoCrc in rawBuf
+  // Build packed payload (message_type + fields) into a local buffer
+  uint8_t rawBuf[1024];
+  size_t payloadNoCrcLen = 0;
+  // reuse buildPackedPayload idea
+  buildPackedPayload(rawBuf + 0, payloadNoCrcLen);  // returns payloadNoCrc in rawBuf
 
-    // compute CRC over payloadNoCrc
-    uint16_t crc = crc16_ccitt(rawBuf, payloadNoCrcLen);
+  // compute CRC over payloadNoCrc
+  uint16_t crc = crc16_ccitt(rawBuf, payloadNoCrcLen);
 
-    // build payloadWithCrc in separate buffer
-    uint8_t payloadWithCrc[1024];
-    memcpy(payloadWithCrc, rawBuf, payloadNoCrcLen);
-    payloadWithCrc[payloadNoCrcLen++] = crc & 0xFF;
-    payloadWithCrc[payloadNoCrcLen++] = (crc >> 8) & 0xFF;
+  // build payloadWithCrc in separate buffer
+  uint8_t payloadWithCrc[1024];
+  memcpy(payloadWithCrc, rawBuf, payloadNoCrcLen);
+  payloadWithCrc[payloadNoCrcLen++] = crc & 0xFF;
+  payloadWithCrc[payloadNoCrcLen++] = (crc >> 8) & 0xFF;
 
-    // send framed
-    sendPayloadWithCrc(payloadWithCrc, payloadNoCrcLen);
+  // send framed
+  sendPayloadWithCrc(payloadWithCrc, payloadNoCrcLen);
 }

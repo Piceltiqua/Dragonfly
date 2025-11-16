@@ -1,12 +1,11 @@
 #ifndef FC_H
 #define FC_H
-#include <Arduino.h>
-
 
 #include "Barometer.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
 #include "Utils.hpp"
+#include "Command.hpp"
 // #include "UKF.hpp"
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
@@ -47,6 +46,7 @@ private:
     IMU imu;
     GNSS gnss;
     Barometer barometer;
+    Command command;
 
     // UKF ukf;
     // AttitudeController attCtrl;
