@@ -34,10 +34,10 @@ void IMU::read() {
                     qIMU2 = sensorValue.un.rotationVector.j;
                     qIMU3 = sensorValue.un.rotationVector.k;
 
-                    attitude_.q0 = 0.5 * (qIMU0 + qIMU1 + qIMU2 + qIMU3);
-                    attitude_.q1 = 0.5 * (qIMU1 - qIMU0 - qIMU3 + qIMU2);
-                    attitude_.q2 = 0.5 * (qIMU2 + qIMU3 - qIMU0 - qIMU1);
-                    attitude_.q3 = 0.5 * (qIMU3 - qIMU2 + qIMU1 - qIMU0);
+                    attitude_.qw = 0.5 * (qIMU0 + qIMU1 + qIMU2 + qIMU3);
+                    attitude_.qi = 0.5 * (qIMU1 - qIMU0 - qIMU3 + qIMU2);
+                    attitude_.qj = 0.5 * (qIMU2 + qIMU3 - qIMU0 - qIMU1);
+                    attitude_.qk = 0.5 * (qIMU3 - qIMU2 + qIMU1 - qIMU0);
                     quat = true;
                 }
                 break;

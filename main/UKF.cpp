@@ -58,23 +58,23 @@ void UKF::predict(float dt)
 
 void UKF::updateGNSS()
 {
-    float cx = 2.f * (attitude_.q1*attitude_.q3 + attitude_.q0*attitude_.q2) * dz_GNSS;
-    float cy = 2.f * (attitude_.q2*attitude_.q3 - attitude_.q0*attitude_.q1) * dz_GNSS;
-    float cz = (1.f - 2.f*(attitude_.q1*attitude_.q1 + attitude_.q2*attitude_.q2)) * dz_GNSS;
+    float cx = 2.f * (attitude_.qi*attitude_.qk + attitude_.qw*attitude_.qj) * dz_GNSS;
+    float cy = 2.f * (attitude_.qj*attitude_.qk - attitude_.qw*attitude_.qi) * dz_GNSS;
+    float cz = (1.f - 2.f*(attitude_.qi*attitude_.qi + attitude_.qj*attitude_.qj)) * dz_GNSS;
 
     // Corrected position
-    pos_GNSS <<  gnssData_.posNGNSS - cx,
-               gnssData_.posEGNSS - cy,
-               gnssData_.posDGNSS - cz;
+    pos_GNSS <<  gnssData_.posN - cx,
+               gnssData_.posE - cy,
+               gnssData_.posD - cz;
 
     float dvx = attitude_.wy * cz - attitude_.wz * cy;
     float dvy = attitude_.wz * cx - attitude_.wx * cz;
     float dvz = attitude_.wx * cy - attitude_.wy * cx;
 
     // Corrected velocity
-    vel_GNSS <<  gnssData_.velNGNSS - dvx,
-               gnssData_.velEGNSS - dvy,
-               gnssData_.velDGNSS - dvz;
+    vel_GNSS <<  gnssData_.velN - dvx,
+               gnssData_.velE - dvy,
+               gnssData_.velD - dvz;
 
 
     // Update measurement vector for UKF
@@ -120,17 +120,17 @@ void UKF::fx(Eigen::Ref<Eigen::MatrixXf> x, float dt)
     acc_body(1,0) = imuAcc_.ay - ( dz_IMU * (attitude_.wx*attitude_.wy));
     acc_body(2,0) = imuAcc_.az;
 
-    R(0,0) =  2*(attitude_.q1*attitude_.q2 + attitude_.q0*attitude_.q3);
-    R(0,1) =  1 - 2*(attitude_.q1*attitude_.q1 + attitude_.q3*attitude_.q3);
-    R(0,2) =  2*(attitude_.q2*attitude_.q3 - attitude_.q0*attitude_.q1);
+    R(0,0) =  2*(attitude_.qi*attitude_.qj + attitude_.qw*attitude_.qk);
+    R(0,1) =  1 - 2*(attitude_.qi*attitude_.qi + attitude_.qk*attitude_.qk);
+    R(0,2) =  2*(attitude_.qj*attitude_.qk - attitude_.qw*attitude_.qi);
 
-    R(1,0) =  1 - 2*(attitude_.q2*attitude_.q2 + attitude_.q3*attitude_.q3);
-    R(1,1) =  2*(attitude_.q1*attitude_.q2 - attitude_.q0*attitude_.q3);
-    R(1,2) =  2*(attitude_.q1*attitude_.q3 + attitude_.q0*attitude_.q2);
+    R(1,0) =  1 - 2*(attitude_.qj*attitude_.qj + attitude_.qk*attitude_.qk);
+    R(1,1) =  2*(attitude_.qi*attitude_.qj - attitude_.qw*attitude_.qk);
+    R(1,2) =  2*(attitude_.qi*attitude_.qk + attitude_.qw*attitude_.qj);
 
-    R(2,0) = -2*(attitude_.q1*attitude_.q3 - attitude_.q0*attitude_.q2);
-    R(2,1) = -2*(attitude_.q2*attitude_.q3 + attitude_.q0*attitude_.q1);
-    R(2,2) = -(1 - 2*(attitude_.q1*attitude_.q1 + attitude_.q2*attitude_.q2));
+    R(2,0) = -2*(attitude_.qi*attitude_.qk - attitude_.qw*attitude_.qj);
+    R(2,1) = -2*(attitude_.qj*attitude_.qk + attitude_.qw*attitude_.qi);
+    R(2,2) = -(1 - 2*(attitude_.qi*attitude_.qi + attitude_.qj*attitude_.qj));
 
     acc_world = R * acc_body;
     pos += vel * dt + acc_world * (0.5f * dt * dt);

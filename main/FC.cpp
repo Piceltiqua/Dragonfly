@@ -52,9 +52,9 @@ void FlightController::readSensors() {
         if (gnssData.fixType == 6) {
             printState();
         } else {
-            // Serial1.println("Test Serial1");
-            sendTelemetry();
+            printSensors();
         }
+        sendTelemetry();
     }
 }
 void FlightController::printState() {
@@ -123,7 +123,7 @@ void FlightController::printSensors() {
     Serial.print(",");
     Serial.print(gnssData.fixType);
     Serial.print(",");
-    Serial.print(baroData.altBaro);
+    Serial.print(barometerData.altBaro);
     Serial.println();
 }
 
@@ -223,8 +223,8 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     *p++ = gnssData.numSV;
     *p++ = gnssData.fixType;
 
-    memcpy(p, &baroData.altBaro, sizeof(baroData.altBaro));
-    p += sizeof(baroData.altBaro);
+    memcpy(p, &barometerData.altBaro, sizeof(barometerData.altBaro));
+    p += sizeof(barometerData.altBaro);
 
     memcpy(p, &battery.currentDraw, sizeof(battery.currentDraw));
     p += sizeof(battery.currentDraw);

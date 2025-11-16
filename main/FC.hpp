@@ -5,8 +5,8 @@
 #include "Command.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
+#include "UKF.hpp"
 #include "Utils.hpp"
-// #include "UKF.hpp"
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
 
@@ -33,7 +33,7 @@ public:
     FlightController();
 
     void setup();
-    void sensorFusion();
+    void readSensors();
 
 private:
     void printState();
@@ -44,7 +44,7 @@ private:
     Barometer barometer;
     Command command;
 
-    // UKF ukf;
+    UKF ukf;
     // AttitudeController attCtrl;
     // PositionController posCtrl;
 
