@@ -14,8 +14,9 @@ void FlightController::setup() {
   gnss.setup();
   barometer.setup();
   command.setup();
+  ukf.setup();
 
-  // Serial.begin(115200);
+  //Serial.begin(115200);
   Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
   delay(1000);
 }
@@ -33,6 +34,7 @@ void FlightController::readSensors() {
     IMUTimer -= IMU_PERIOD_US;
     imu.read();
     gnssReading = gnss.read();
+    ukf.predict(1/IMU_FREQ_HZ);
 
     // Update battery level
   }

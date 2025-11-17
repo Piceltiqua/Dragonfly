@@ -101,7 +101,7 @@ void UKF::updateGNSS()
 
 void UKF::updateBarometer()
 {
-    z_BARO = barometerData_.altBaro - dz_BARO;
+    z_BARO = barometerData_.altBaro;
 
     S_BARO = P(2,2) + R_BARO;
     K_BARO = P.col(2) / S_BARO;

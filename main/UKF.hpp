@@ -55,9 +55,8 @@ private:
     MatrixXf x;  // estimated state vector
 
     // Rocket/IMU parameters
-    float dz_IMU = 0.0f;
-    float dz_GNSS = 0.0f;
-    float dz_BARO = 0.0f;
+    float dz_IMU = 0.207f;
+    float dz_GNSS = 0.475f;
     float sigma_a = 0.02f;
     float sigma_vel = 0.1f;
 
