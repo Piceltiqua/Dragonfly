@@ -11,7 +11,8 @@ public:
     void setup();
     void commandGimbal(int angleX, int angleY);
     void commandMotors(int throttleMotor1, int throttleMotor2);
-    void extendLegs(bool legsUp);
+    void extendLegs();
+    void retractLegs();
     void setLedColor(bool red, bool green, bool blue);
 
 private:

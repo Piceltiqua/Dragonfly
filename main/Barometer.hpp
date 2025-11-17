@@ -18,7 +18,7 @@ public:
 
     void setup();
     void read();
-    void setReference(float altitude);
+    void setReference();
 
 private:
     Adafruit_BMP3XX bmp_;
