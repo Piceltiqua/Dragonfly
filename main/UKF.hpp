@@ -2,7 +2,6 @@
 #define UKF_H
 
 #include "Utils.hpp"
-#include "eigen.h"
 #include <Eigen/LU>
 #include <cmath>
 using namespace Eigen;

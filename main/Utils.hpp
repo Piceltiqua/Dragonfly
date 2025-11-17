@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <stdint.h>
 #include <string.h>
+#include "eigen.h"
 
 static constexpr uint8_t STX = 0x7E;
 static constexpr uint8_t DLE = 0x7D;
