@@ -1,5 +1,7 @@
 #include "FC.hpp"
 
+#define USE_TIMERS
+
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(gnssData),
@@ -22,44 +24,100 @@ void FlightController::setup() {
 }
 
 void FlightController::readSensors() {
+#ifdef USE_TIMERS
+    unsigned long t0_telemReceive = micros();
+#endif
     while (Serial1.available()) {
         int b = Serial1.read();
         if (b >= 0) processIncomingByte((uint8_t)b);
     }
-
+#ifdef USE_TIMERS
+    Serial.print("Telem receive time (us): ");
+    Serial.println(micros() - t0_telemReceive);
+#endif
     // Attitude loop
     if (IMUTimer >= IMU_PERIOD_US) {
         // Receive commands
 
         IMUTimer -= IMU_PERIOD_US;
+#ifdef USE_TIMERS
+        unsigned long t0_imuRead = micros();
+#endif
         imu.read();
+#ifdef USE_TIMERS
+        Serial.print("IMU read time (us): ");
+        Serial.println(micros() - t0_imuRead);
+#endif
+#ifdef USE_TIMERS
+        unsigned long t0_gnssRead = micros();
+#endif
         gnssReading = gnss.read();
+#ifdef USE_TIMERS
+        Serial.print("GNSS read time (us): ");
+        Serial.println(micros() - t0_gnssRead);
+#endif
         if (gnssData.fixType == 6) {
+#ifdef USE_TIMERS
+            unsigned long t0_predictStep = micros();
+#endif
             ukf.predict(1.0f / IMU_FREQ_HZ);
+#ifdef USE_TIMERS
+            Serial.print("Predict step time (us): ");
+            Serial.println(micros() - t0_predictStep);
+#endif
         }
+#ifndef USE_TIMERS
         printState();
-        // printSensors();
+#endif
         // Update battery level
     }
 
     // Position loop
     if (gnssReading) {
+#ifdef USE_TIMERS
+        unsigned long t0_baroRead = micros();
+#endif
         barometer.read();
+#ifdef USE_TIMERS
+        Serial.print("Baro read time (us): ");
+        Serial.println(micros() - t0_baroRead);
+#endif
         if (gnssData.fixType == 6) {
+#ifdef USE_TIMERS
+            unsigned long t0_baroUpdate = micros();
+#endif
             ukf.updateBarometer();
+#ifdef USE_TIMERS
+            Serial.print("Baro update time (us): ");
+            Serial.println(micros() - t0_baroUpdate);
+#endif
+#ifdef USE_TIMERS
+            unsigned long t0_gnssUpdate = micros();
+#endif
             ukf.updateGNSS();
+#ifdef USE_TIMERS
+            Serial.print("GNSS update time (us): ");
+            Serial.println(micros() - t0_gnssUpdate);
+#endif
         }
     }
 
     // Telemetry loop
     if (telemTimer >= TELEMETRY_PERIOD_US) {
         telemTimer -= TELEMETRY_PERIOD_US;
-        // if (gnssData.fixType == 6) {
-        //     printState();
-        // } else {
-        //     printSensors();
-        // }
+// if (gnssData.fixType == 6) {
+//     printState();
+// } else {
+//     printSensors();
+// }
+#ifdef USE_TIMERS
+        unsigned long t0_telemetrySend = micros();
+#endif
         sendTelemetry();
+#ifdef USE_TIMERS
+        Serial.print("Telem send time (us): ");
+        Serial.println(micros() - t0_telemetrySend);
+#endif
     }
 }
 void FlightController::printState() {
@@ -77,9 +135,9 @@ void FlightController::printState() {
     Serial.print(",");
     Serial.print(posvel.velD);
     Serial.print(",");
-// }
+    // }
 
-// void FlightController::printSensors() {
+    // void FlightController::printSensors() {
     Serial.print(attitude.qw);
     Serial.print(",");
     Serial.print(attitude.qi);
