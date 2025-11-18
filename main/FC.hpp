@@ -10,8 +10,8 @@
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
 
-#define IMU_FREQ_HZ 250
-#define TELEMETRY_FREQ_HZ 20
+#define IMU_FREQ_HZ 250.0
+#define TELEMETRY_FREQ_HZ 20.0
 
 #define IMU_PERIOD_US (1000000.0 / IMU_FREQ_HZ)
 #define TELEMETRY_PERIOD_US (1000000.0 / TELEMETRY_FREQ_HZ)
@@ -37,7 +37,15 @@ public:
 
 private:
     void printState();
-    void printSensors();
+    // void printSensors();
+
+    PosVel posvel;
+    Attitude attitude;
+    IMUAcceleration imuAcc;
+    GNSSData gnssData;
+    BarometerData barometerData;
+    BatteryStatus battery;
+    ActuatorCommands actuators;
 
     IMU imu;
     GNSS gnss;
@@ -51,14 +59,6 @@ private:
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
-
-    PosVel posvel;
-    Attitude attitude;
-    IMUAcceleration imuAcc;
-    GNSSData gnssData;
-    BarometerData barometerData;
-    BatteryStatus battery;
-    ActuatorCommands actuators;
 
     // Telemetry constants
     bool isRecording = false;

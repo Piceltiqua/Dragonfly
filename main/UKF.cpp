@@ -41,19 +41,19 @@ void UKF::predict(float dt)
         fx(sigma.col(i), dt);
     }
 
-    x = weightedMean<N_STATE>(sigma);
-    P = weightedCovariance<N_STATE, N_STATE>(sigma, x, sigma, x);
+    state = weightedMean<N_STATE>(sigma);
+    P = weightedCovariance<N_STATE, N_STATE>(sigma, state, sigma, state);
 
     computeQ(dt);
     P += Q;
 
     // update the posvel struct
-    posvel_.posN = x(0,0);
-    posvel_.posE = x(1,0);
-    posvel_.posD = x(2,0);
-    posvel_.velN = x(3,0);
-    posvel_.velE = x(4,0);
-    posvel_.velD = x(5,0);
+    posvel_.posN = state(0,0);
+    posvel_.posE = state(1,0);
+    posvel_.posD = state(2,0);
+    posvel_.velN = state(3,0);
+    posvel_.velE = state(4,0);
+    posvel_.velD = state(5,0);
 }
 
 void UKF::updateGNSS()
@@ -88,15 +88,15 @@ void UKF::updateGNSS()
     S_GNSS = P + R_GNSS;
     K_GNSS = P * S_GNSS.inverse();
 
-    x = x + K_GNSS * (z_GNSS - x);
+    state = state + K_GNSS * (z_GNSS - state);
     P = P - K_GNSS * S_GNSS * K_GNSS.transpose();
 
-    posvel_.posN = x(0,0);
-    posvel_.posE = x(1,0);
-    posvel_.posD = x(2,0);
-    posvel_.velN = x(3,0);
-    posvel_.velE = x(4,0);
-    posvel_.velD = x(5,0);
+    posvel_.posN = state(0,0);
+    posvel_.posE = state(1,0);
+    posvel_.posD = state(2,0);
+    posvel_.velN = state(3,0);
+    posvel_.velE = state(4,0);
+    posvel_.velD = state(5,0);
 }
 
 void UKF::updateBarometer()
@@ -105,10 +105,10 @@ void UKF::updateBarometer()
 
     S_BARO = P(2,2) + R_BARO;
     K_BARO = P.col(2) / S_BARO;
-    x += K_BARO * (z_BARO - x(2,0));
+    state += K_BARO * (z_BARO - state(2,0));
     P -= K_BARO * K_BARO.transpose() * S_BARO;
 
-    posvel_.posD = x(2,0);
+    posvel_.posD = state(2,0);
 }
 
 void UKF::fx(Eigen::Ref<Eigen::MatrixXf> x, float dt)
@@ -142,7 +142,7 @@ void UKF::fx(Eigen::Ref<Eigen::MatrixXf> x, float dt)
 
 void UKF::generateSigmaPoints()
 {
-    sigma.col(0) = x;
+    sigma.col(0) = state;
 
     for (int i = 0; i < N_STATE; ++i)
     {
@@ -152,8 +152,8 @@ void UKF::generateSigmaPoints()
         delta.setZero();
         delta(i,0) = SCALE * std_i;
 
-        sigma.col(1 + i)         = x + delta;
-        sigma.col(1 + N_STATE + i) = x - delta;
+        sigma.col(1 + i)         = state + delta;
+        sigma.col(1 + N_STATE + i) = state - delta;
     }
 }
 
@@ -164,15 +164,20 @@ void UKF::computeQ(float dt)
     float dt4 = dt2*dt2;
     float s2  = sigma_a*sigma_a;
 
-    MatrixXf Q_axis(2,2);
-    Q_axis << 0.25f*dt4*s2, 0.5f*dt3*s2,
-              0.5f*dt3*s2, dt2*s2;
-
+    // discrete constant-acceleration process noise for each axis: [pos, vel]
     Q.setZero();
-    Q.block(0,0,2,2) = Q_axis;
-    Q.block(2,2,2,2) = Q_axis;
-    Q.block(4,4,2,2) = Q_axis;
+
+    for (int axis = 0; axis < 3; ++axis) {
+        int ip = axis;      // pos index (0,1,2)
+        int iv = axis + 3;  // vel index (3,4,5)
+
+        Q(ip, ip) = 0.25f * dt4 * s2;
+        Q(ip, iv) = 0.5f  * dt3 * s2;
+        Q(iv, ip) = 0.5f  * dt3 * s2;
+        Q(iv, iv) =       dt2 * s2;
+    }
 }
+
 
 template<int N>
 Eigen::Matrix<float, N, 1> UKF::weightedMean(const Eigen::Matrix<float, N, N_SIGMA> &sigmaMat)
