@@ -483,6 +483,53 @@ void FlightController::processIncomingByte(uint8_t b) {
     }
 }
 
+// build the escaped frame into outBuf and return outLen
+size_t buildEscapedFramed(const uint8_t* unescaped, size_t unescapedLen, uint8_t* outBuf, size_t outBufMax) {
+    size_t outPos = 0;
+    if (outPos < outBufMax) outBuf[outPos++] = STX;
+    for (size_t i = 0; i < unescapedLen; ++i) {
+        uint8_t b = unescaped[i];
+        if (b == STX || b == DLE) {
+            if (outPos + 2 > outBufMax) return 0;  // overflow
+            outBuf[outPos++] = DLE;
+            outBuf[outPos++] = b ^ XOR_MASK;
+        } else {
+            if (outPos + 1 > outBufMax) return 0;  // overflow
+            outBuf[outPos++] = b;
+        }
+    }
+    if (outPos < outBufMax) outBuf[outPos++] = STX;
+    return outPos;
+}
+
+// Non-blocking send: writes only if TX buffer has enough room
+bool FlightController::trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen) {
+    // framed unescaped = [len_low, len_hi, payloadWithCrc...]
+    static uint8_t framedUnescaped[2 + 1024];
+    framedUnescaped[0] = payloadLen & 0xFF;
+    framedUnescaped[1] = (payloadLen >> 8) & 0xFF;
+    memcpy(framedUnescaped + 2, payloadWithCrc, payloadLen);
+    size_t unescapedLen = 2 + payloadLen;
+
+    // build escaped frame into a local buffer
+    static uint8_t outBuf[2 + 2 * (1024 + 2)];  // worst-case space
+    size_t outLen = buildEscapedFramed(framedUnescaped, unescapedLen, outBuf, sizeof(outBuf));
+    if (outLen == 0) return false;  // trouble building
+
+    // Check TX buffer capacity first — non-blocking
+    int freeSpace = Serial1.availableForWrite();  // bytes available in UART TX buffer
+    if (freeSpace < (int)outLen) {
+        // Not enough room right now. Do not call Serial1.write() to avoid blocking.
+        // You can either drop this telemetry, or count a drop, or queue it in RAM.
+        return false;
+    }
+
+    // Safe to write without blocking
+    Serial1.write(outBuf, outLen);
+    // DO NOT call Serial1.flush()
+    return true;
+}
+
 void FlightController::sendTelemetry() {
     // Build packed payload (message_type + fields) into a local buffer
     uint8_t rawBuf[1024];
@@ -500,5 +547,5 @@ void FlightController::sendTelemetry() {
     payloadWithCrc[payloadNoCrcLen++] = (crc >> 8) & 0xFF;
 
     // send framed
-    sendPayloadWithCrc(payloadWithCrc, payloadNoCrcLen);
+    trySendPayloadWithCrc(payloadWithCrc, payloadNoCrcLen);
 }
