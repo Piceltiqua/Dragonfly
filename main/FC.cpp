@@ -24,43 +24,76 @@ void FlightController::setup() {
 }
 
 void FlightController::readSensors() {
-#ifdef USE_TIMERS
-    unsigned long t0_telemReceive = micros();
-#endif
     while (Serial1.available()) {
+#ifdef USE_TIMERS
+        unsigned long t0_telemReceive = micros();
+#endif
+
         int b = Serial1.read();
         if (b >= 0) processIncomingByte((uint8_t)b);
-    }
+
 #ifdef USE_TIMERS
-    Serial.print("Telem receive time (us): ");
-    Serial.println(micros() - t0_telemReceive);
+        Serial.print("Telem receive time (us): ");
+        Serial.println(micros() - t0_telemReceive);
 #endif
+    }
+
     // Attitude loop
     if (IMUTimer >= IMU_PERIOD_US) {
         // Receive commands
-
         IMUTimer -= IMU_PERIOD_US;
+
 #ifdef USE_TIMERS
         unsigned long t0_imuRead = micros();
 #endif
+
         imu.read();
+
 #ifdef USE_TIMERS
         Serial.print("IMU read time (us): ");
         Serial.println(micros() - t0_imuRead);
 #endif
+
+        if (gnss.read()) {
 #ifdef USE_TIMERS
-        unsigned long t0_gnssRead = micros();
+            unsigned long t0_baroRead = micros();
 #endif
-        gnssReading = gnss.read();
+
+            barometer.read();
+
 #ifdef USE_TIMERS
-        Serial.print("GNSS read time (us): ");
-        Serial.println(micros() - t0_gnssRead);
+            Serial.print("Baro read time (us): ");
+            Serial.println(micros() - t0_baroRead);
 #endif
+
+            if (gnssData.fixType == 6) {
+#ifdef USE_TIMERS
+                unsigned long t0_baroUpdate = micros();
+#endif
+
+                ukf.updateBarometer();
+
+#ifdef USE_TIMERS
+                Serial.print("Baro update time (us): ");
+                Serial.println(micros() - t0_baroUpdate);
+                unsigned long t0_gnssUpdate = micros();
+#endif
+
+                ukf.updateGNSS();
+
+#ifdef USE_TIMERS
+                Serial.print("GNSS update time (us): ");
+                Serial.println(micros() - t0_gnssUpdate);
+#endif
+            }
+        }
         if (gnssData.fixType == 6) {
 #ifdef USE_TIMERS
             unsigned long t0_predictStep = micros();
 #endif
+
             ukf.predict(1.0f / IMU_FREQ_HZ);
+
 #ifdef USE_TIMERS
             Serial.print("Predict step time (us): ");
             Serial.println(micros() - t0_predictStep);
@@ -72,54 +105,23 @@ void FlightController::readSensors() {
         // Update battery level
     }
 
-    // Position loop
-    if (gnssReading) {
-#ifdef USE_TIMERS
-        unsigned long t0_baroRead = micros();
-#endif
-        barometer.read();
-#ifdef USE_TIMERS
-        Serial.print("Baro read time (us): ");
-        Serial.println(micros() - t0_baroRead);
-#endif
-        if (gnssData.fixType == 6) {
-#ifdef USE_TIMERS
-            unsigned long t0_baroUpdate = micros();
-#endif
-            ukf.updateBarometer();
-#ifdef USE_TIMERS
-            Serial.print("Baro update time (us): ");
-            Serial.println(micros() - t0_baroUpdate);
-#endif
-#ifdef USE_TIMERS
-            unsigned long t0_gnssUpdate = micros();
-#endif
-            ukf.updateGNSS();
-#ifdef USE_TIMERS
-            Serial.print("GNSS update time (us): ");
-            Serial.println(micros() - t0_gnssUpdate);
-#endif
-        }
-    }
-
     // Telemetry loop
     if (telemTimer >= TELEMETRY_PERIOD_US) {
         telemTimer -= TELEMETRY_PERIOD_US;
-// if (gnssData.fixType == 6) {
-//     printState();
-// } else {
-//     printSensors();
-// }
+
 #ifdef USE_TIMERS
         unsigned long t0_telemetrySend = micros();
 #endif
+
         sendTelemetry();
+
 #ifdef USE_TIMERS
         Serial.print("Telem send time (us): ");
         Serial.println(micros() - t0_telemetrySend);
 #endif
     }
 }
+
 void FlightController::printState() {
     Serial.print(millis());
     Serial.print(",");
@@ -135,9 +137,7 @@ void FlightController::printState() {
     Serial.print(",");
     Serial.print(posvel.velD);
     Serial.print(",");
-    // }
 
-    // void FlightController::printSensors() {
     Serial.print(attitude.qw);
     Serial.print(",");
     Serial.print(attitude.qi);
@@ -215,7 +215,7 @@ void FlightController::sendRawFramed(const uint8_t* unescaped, size_t unescapedL
     Serial1.write(STX);
     for (size_t i = 0; i < unescapedLen; ++i) writeEscapedByte(unescaped[i]);
     Serial1.write(STX);
-    Serial1.flush();
+    // Serial1.flush();
 }
 
 void FlightController::sendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen) {
