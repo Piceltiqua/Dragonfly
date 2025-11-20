@@ -100,6 +100,7 @@ void FlightController::readSensors() {
 #endif
     }
 }
+
 void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
     // payload[0] = message_type
     if (payloadLen < 1) return;
@@ -151,7 +152,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_ORIG:
             ukf.setup();
-            barometer.setReference();
             gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
             command.setLedColor(1, 0, 1);
             break;
@@ -197,26 +197,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             Serial.println(header, HEX);
             break;
     }
-}
-
-void FlightController::sendTelemetry() {
-    // Build packed payload (message_type + fields) into a local buffer
-    uint8_t rawBuf[1024];
-    size_t payloadNoCrcLen = 0;
-    // reuse buildPackedPayload idea
-    buildPackedPayload(rawBuf + 0, payloadNoCrcLen);  // returns payloadNoCrc in rawBuf
-
-    // compute CRC over payloadNoCrc
-    uint16_t crc = crc16_ccitt(rawBuf, payloadNoCrcLen);
-
-    // build payloadWithCrc in separate buffer
-    uint8_t payloadWithCrc[1024];
-    memcpy(payloadWithCrc, rawBuf, payloadNoCrcLen);
-    payloadWithCrc[payloadNoCrcLen++] = crc & 0xFF;
-    payloadWithCrc[payloadNoCrcLen++] = (crc >> 8) & 0xFF;
-
-    // send framed
-    sendPayloadWithCrc(payloadWithCrc, payloadNoCrcLen);
 }
 
 void FlightController::printState() {
@@ -312,15 +292,6 @@ void FlightController::sendRawFramed(const uint8_t* unescaped, size_t unescapedL
     // Serial1.flush();
 }
 
-void FlightController::sendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen) {
-    // build unescaped buffer: len_low, len_hi, payloadWithCrc
-    uint8_t framed[2 + 1024];
-    framed[0] = payloadLen & 0xFF;
-    framed[1] = (payloadLen >> 8) & 0xFF;
-    memcpy(framed + 2, payloadWithCrc, payloadLen);
-    sendRawFramed(framed, 2 + payloadLen);
-}
-
 void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     uint8_t* p = buf;
     // message type
@@ -405,109 +376,11 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     outLen = p - buf;
 }
 
-void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
-    // payload[0] = message_type
-    if (payloadLen < 1) return;
-    uint8_t header = payload[0];
-    // commands mapping:
-    switch (header) {
-        case MSG_FLY:
-            // start flight
-            // implement your flight start logic here
-            // NOTE: we already echoed the frame back before executing
-            command.setLedColor(0, 0, 0);
-            //
-            break;
-
-        case MSG_LEG: {
-            if (payloadLen >= 2) {
-                uint8_t val = payload[1];
-                // val will be 0x9D or 0xA9 per GUI
-                // implement leg actuation: map to your hardware
-                actuators.legsPosition = (val == 0x9D) ? 0xFE : 0xFA;  // example: set state to deployed/
-                command.setLedColor(0, 0, 1);
-                if (val == 0x9D) {
-                    command.extendLegs(1);
-                } else if (val == 0xA9) {
-                    command.extendLegs(0);
-                }
-            }
-
-            break;
-        }
-
-        case MSG_BAT: {
-            if (payloadLen >= 3) {
-                uint16_t mah = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
-                command.setLedColor(0, 1, 0);
-                // store/handle accordingly
-            }
-
-            break;
-        }
-
-        case MSG_CTRL:
-            if (payloadLen >= 2) {
-                uint8_t ctrl = payload[1];
-                command.setLedColor(1, 0, 0);
-                // handle enabling/disabling controllers
-            }
-
-            break;
-
-        case MSG_ORIG:
-            // set origin logic + tare barometer
-            command.setLedColor(1, 0, 1);
-            break;
-
-        case MSG_ENG:
-            if (payloadLen >= 3) {
-                uint8_t m1 = payload[1];
-                uint8_t m2 = payload[2];
-                command.commandMotors(m1, m2);
-                command.setLedColor(1, 1, 0);
-                // set motor throttles (percent)
-            }
-            break;
-
-        case MSG_STOP:
-            // stop motors immediately
-            command.setLedColor(1, 1, 1);
-            break;
-
-        case MSG_LAND:
-            // landing logic
-            break;
-
-        case MSG_REC:
-            if (payloadLen >= 2) {
-                uint8_t rec = payload[1];
-                if (rec == 0xE6) {  // start rec
-                    if (!isRecording) {
-                        isRecording = true;
-                        // start sd logging
-                    }
-                } else if (rec == 0xF1) {  // stop rec
-                    if (isRecording) {
-                        isRecording = false;
-                        // stop sd logging
-                    }
-                }
-            }
-            break;
-
-        default:
-            Serial.print("Unknown command type ");
-            Serial.println(header, HEX);
-            break;
-    }
-}
-
 void FlightController::processCompleteUnescapedFrame(const uint8_t* buf, size_t len) {
     // buf[0..1] = len low, len high
     if (len < 2) return;
     uint16_t payloadLen = (uint16_t)buf[0] | ((uint16_t)buf[1] << 8);
-    if (payloadLen + 2 != len) {
+    if ((size_t)(payloadLen + 2) != len) {
         // mismatch (this shouldn't happen if caller provided correct unescaped len)
         return;
     }
@@ -559,7 +432,7 @@ void FlightController::processIncomingByte(uint8_t b) {
         // we pass to processCompleteUnescapedFrame if it looks valid
         if (frameBufLen >= 2) {
             uint16_t payloadLen = (uint16_t)frameBuf[0] | ((uint16_t)frameBuf[1] << 8);
-            if (payloadLen + 2 == frameBufLen) {
+            if ((size_t)(payloadLen + 2) == frameBufLen) {
                 processCompleteUnescapedFrame(frameBuf, frameBufLen);
             } else {
                 // partial or inconsistent frame; drop and resync

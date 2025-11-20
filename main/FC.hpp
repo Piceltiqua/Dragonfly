@@ -48,7 +48,6 @@ private:
     IMU imu;
     GNSS gnss;
     Command command;
-
     UKF ukf;
     // AttitudeController attCtrl;
     // PositionController posCtrl;
@@ -67,11 +66,10 @@ private:
     // Telemetry functions
     void processIncomingByte(uint8_t b);  // Read incoming data
     void sendTelemetry();
-
-    uint16_t crc16_ccitt(const uint8_t* data, size_t len);
     void writeEscapedByte(uint8_t b);
     void sendRawFramed(const uint8_t* unescaped, size_t unescapedLen);
-    void sendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen);
+
+    uint16_t crc16_ccitt(const uint8_t* data, size_t len);
     void buildPackedPayload(uint8_t* buf, size_t& outLen);
     void executeCommandFromPayload(const uint8_t* payload, size_t payloadLen);
     void processCompleteUnescapedFrame(const uint8_t* buf, size_t len);
