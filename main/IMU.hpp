@@ -3,7 +3,7 @@
 
 #include "Utils.hpp"
 #include <Adafruit_BNO08x.h>
-#include <Eigen/Core>
+#include <Eigen/Dense>
 #include <Eigen/Geometry>
 
 #define IMU_TIMEOUT 1000
@@ -16,10 +16,12 @@ public:
 
   void setup(int imu_freq);
   void read();
-  void transformQuaternion_IMU_to_CAD(float w_in, float x_in, float y_in, float z_in,
-                                      float &w_out, float &x_out, float &y_out, float &z_out);
+  void imuQuatToCadQuat(const Eigen::Quaternionf &q_imu, Eigen::Quaternionf &q_cad);
+  void imuQuatToCadQuatf(float qw_in, float qx_in, float qy_in, float qz_in,
+                              float &qw_out, float &qx_out, float &qy_out, float &qz_out);
 
-    private : Adafruit_BNO08x bno08x_{ Serial4 };
+private : 
+  Adafruit_BNO08x bno08x_{ Serial4 };
   sh2_SensorValue_t sensorValue;
 
   IMUAcceleration &imuAcc_;

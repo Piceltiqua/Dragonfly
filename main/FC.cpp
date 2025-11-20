@@ -5,7 +5,8 @@
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(gnssData),
-      ukf(posvel, attitude, imuAcc, gnssData)
+      ukf(posvel, attitude, imuAcc, gnssData),
+      battery(batteryStatus)
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, targetAttitude, waypoints)
 {}
@@ -15,6 +16,7 @@ void FlightController::setup() {
     gnss.setup();
     command.setup();
     ukf.setup();
+    battery.setup();
 
     // Serial.begin(115200);
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
@@ -51,6 +53,9 @@ void FlightController::readSensors() {
         Serial.print("IMU read time (us): ");
         Serial.println(micros() - t0_imuRead);
 #endif
+        battery.readVoltage();
+        battery.readCurrent();
+        battery.integrateCurrentDraw();
 
         if (gnss.read()) {
             if (gnssData.fixType == 6) {
@@ -79,7 +84,7 @@ void FlightController::readSensors() {
 #endif
         }
 #ifndef USE_TIMERS
-        printState();
+        // printState();
 #endif
         // Update battery level
     }
@@ -133,7 +138,8 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_BAT: {
             if (payloadLen >= 3) {
-                uint16_t mah = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
+                uint16_t charge_mah = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
+                battery.setCharge(charge_mah);
                 command.setLedColor(0, 1, 0);
                 // store/handle accordingly
             }
@@ -349,13 +355,13 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     *p++ = gnssData.numSV;
     *p++ = gnssData.fixType;
 
-    memcpy(p, &battery.currentDraw, sizeof(battery.currentDraw));
-    p += sizeof(battery.currentDraw);
-    memcpy(p, &battery.currentConsumed, sizeof(battery.currentConsumed));
-    p += sizeof(battery.currentConsumed);
-    memcpy(p, &battery.batteryVoltage, sizeof(battery.batteryVoltage));
-    p += sizeof(battery.batteryVoltage);
-    *p++ = battery.batteryLevel;
+    memcpy(p, &batteryStatus.currentDraw, sizeof(batteryStatus.currentDraw));
+    p += sizeof(batteryStatus.currentDraw);
+    memcpy(p, &batteryStatus.currentConsumed, sizeof(batteryStatus.currentConsumed));
+    p += sizeof(batteryStatus.currentConsumed);
+    memcpy(p, &batteryStatus.batteryVoltage, sizeof(batteryStatus.batteryVoltage));
+    p += sizeof(batteryStatus.batteryVoltage);
+    *p++ = batteryStatus.batteryLevel;
 
     uint32_t UPTIME = millis();
     memcpy(p, &UPTIME, sizeof(UPTIME));

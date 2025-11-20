@@ -6,6 +6,7 @@
 #include "IMU.hpp"
 #include "UKF.hpp"
 #include "Utils.hpp"
+#include "Battery.hpp"
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
 
@@ -42,13 +43,14 @@ private:
     Attitude attitude;
     IMUAcceleration imuAcc;
     GNSSData gnssData;
-    BatteryStatus battery;
+    BatteryStatus batteryStatus;
     ActuatorCommands actuators;
 
     IMU imu;
     GNSS gnss;
     Command command;
     UKF ukf;
+    Battery battery;
     // AttitudeController attCtrl;
     // PositionController posCtrl;
 
