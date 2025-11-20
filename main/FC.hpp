@@ -1,7 +1,6 @@
 #ifndef FC_H
 #define FC_H
 
-#include "Barometer.hpp"
 #include "Command.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
@@ -43,13 +42,11 @@ private:
     Attitude attitude;
     IMUAcceleration imuAcc;
     GNSSData gnssData;
-    BarometerData barometerData;
     BatteryStatus battery;
     ActuatorCommands actuators;
 
     IMU imu;
     GNSS gnss;
-    Barometer barometer;
     Command command;
 
     UKF ukf;
@@ -78,6 +75,7 @@ private:
     void buildPackedPayload(uint8_t* buf, size_t& outLen);
     void executeCommandFromPayload(const uint8_t* payload, size_t payloadLen);
     void processCompleteUnescapedFrame(const uint8_t* buf, size_t len);
+    bool trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen);
 };
 
 #endif

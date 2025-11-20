@@ -1,12 +1,11 @@
 #include "FC.hpp"
 
-#define USE_TIMERS
+// #define USE_TIMERS
 
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(gnssData),
-      barometer(barometerData),
-      ukf(posvel, attitude, imuAcc, gnssData, barometerData)
+      ukf(posvel, attitude, imuAcc, gnssData)
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, targetAttitude, waypoints)
 {}
@@ -14,7 +13,6 @@ FlightController::FlightController()
 void FlightController::setup() {
     imu.setup(IMU_FREQ_HZ);
     gnss.setup();
-    barometer.setup();
     command.setup();
     ukf.setup();
 
@@ -55,27 +53,8 @@ void FlightController::readSensors() {
 #endif
 
         if (gnss.read()) {
-#ifdef USE_TIMERS
-            unsigned long t0_baroRead = micros();
-#endif
-
-            barometer.read();
-
-#ifdef USE_TIMERS
-            Serial.print("Baro read time (us): ");
-            Serial.println(micros() - t0_baroRead);
-#endif
-
             if (gnssData.fixType == 6) {
 #ifdef USE_TIMERS
-                unsigned long t0_baroUpdate = micros();
-#endif
-
-                ukf.updateBarometer();
-
-#ifdef USE_TIMERS
-                Serial.print("Baro update time (us): ");
-                Serial.println(micros() - t0_baroUpdate);
                 unsigned long t0_gnssUpdate = micros();
 #endif
 
@@ -182,10 +161,7 @@ void FlightController::printState() {
     Serial.print(",");
     Serial.print(gnssData.numSV);
     Serial.print(",");
-    Serial.print(gnssData.fixType);
-    Serial.print(",");
-    Serial.print(barometerData.altBaro);
-    Serial.println();
+    Serial.println(gnssData.fixType);
 }
 
 uint16_t FlightController::crc16_ccitt(const uint8_t* data, size_t len) {
@@ -283,9 +259,6 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
 
     *p++ = gnssData.numSV;
     *p++ = gnssData.fixType;
-
-    memcpy(p, &barometerData.altBaro, sizeof(barometerData.altBaro));
-    p += sizeof(barometerData.altBaro);
 
     memcpy(p, &battery.currentDraw, sizeof(battery.currentDraw));
     p += sizeof(battery.currentDraw);
@@ -515,14 +488,6 @@ bool FlightController::trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size
     static uint8_t outBuf[2 + 2 * (1024 + 2)];  // worst-case space
     size_t outLen = buildEscapedFramed(framedUnescaped, unescapedLen, outBuf, sizeof(outBuf));
     if (outLen == 0) return false;  // trouble building
-
-    // Check TX buffer capacity first — non-blocking
-    int freeSpace = Serial1.availableForWrite();  // bytes available in UART TX buffer
-    if (freeSpace < (int)outLen) {
-        // Not enough room right now. Do not call Serial1.write() to avoid blocking.
-        // You can either drop this telemetry, or count a drop, or queue it in RAM.
-        return false;
-    }
 
     // Safe to write without blocking
     Serial1.write(outBuf, outLen);
