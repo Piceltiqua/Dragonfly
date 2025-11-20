@@ -68,8 +68,8 @@ struct GNSSData {
     float velN = 0.0f;
     float velE = 0.0f;
     float velD = 0.0f;
-    uint16_t horAcc = 0;
-    uint16_t vertAcc = 0;
+    float horAcc = 0.0f;
+    float vertAcc = 0.0f;
     uint8_t numSV = 0;
     uint8_t fixType = 0;
 };

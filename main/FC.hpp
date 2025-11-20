@@ -1,7 +1,6 @@
 #ifndef FC_H
 #define FC_H
 
-#include "Barometer.hpp"
 #include "Command.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
@@ -10,8 +9,8 @@
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
 
-#define IMU_FREQ_HZ 250
-#define TELEMETRY_FREQ_HZ 20
+#define IMU_FREQ_HZ 250.0
+#define TELEMETRY_FREQ_HZ 20.0
 
 #define IMU_PERIOD_US (1000000.0 / IMU_FREQ_HZ)
 #define TELEMETRY_PERIOD_US (1000000.0 / TELEMETRY_FREQ_HZ)
@@ -37,11 +36,17 @@ public:
 
 private:
     void printState();
-    void printSensors();
+    // void printSensors();
+
+    PosVel posvel;
+    Attitude attitude;
+    IMUAcceleration imuAcc;
+    GNSSData gnssData;
+    BatteryStatus battery;
+    ActuatorCommands actuators;
 
     IMU imu;
     GNSS gnss;
-    Barometer barometer;
     Command command;
 
     UKF ukf;
@@ -51,14 +56,6 @@ private:
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
-
-    PosVel posvel;
-    Attitude attitude;
-    IMUAcceleration imuAcc;
-    GNSSData gnssData;
-    BarometerData barometerData;
-    BatteryStatus battery;
-    ActuatorCommands actuators;
 
     // Telemetry constants
     bool isRecording = false;
@@ -78,6 +75,7 @@ private:
     void buildPackedPayload(uint8_t* buf, size_t& outLen);
     void executeCommandFromPayload(const uint8_t* payload, size_t payloadLen);
     void processCompleteUnescapedFrame(const uint8_t* buf, size_t len);
+    bool trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen);
 };
 
 #endif

@@ -1,10 +1,11 @@
 #include "FC.hpp"
 
+// #define USE_TIMERS
+
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(gnssData),
-      barometer(barometerData),
-      ukf(posvel, attitude, imuAcc, gnssData, barometerData)
+      ukf(posvel, attitude, imuAcc, gnssData)
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, targetAttitude, waypoints)
 {}
@@ -12,8 +13,8 @@ FlightController::FlightController()
 void FlightController::setup() {
     imu.setup(IMU_FREQ_HZ);
     gnss.setup();
-    barometer.setup();
     command.setup();
+    ukf.setup();
 
     // Serial.begin(115200);
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
@@ -22,39 +23,81 @@ void FlightController::setup() {
 
 void FlightController::readSensors() {
     while (Serial1.available()) {
+#ifdef USE_TIMERS
+        unsigned long t0_telemReceive = micros();
+#endif
+
         int b = Serial1.read();
         if (b >= 0) processIncomingByte((uint8_t)b);
+
+#ifdef USE_TIMERS
+        Serial.print("Telem receive time (us): ");
+        Serial.println(micros() - t0_telemReceive);
+#endif
     }
 
     // Attitude loop
     if (IMUTimer >= IMU_PERIOD_US) {
         // Receive commands
-
         IMUTimer -= IMU_PERIOD_US;
+
+#ifdef USE_TIMERS
+        unsigned long t0_imuRead = micros();
+#endif
+
         imu.read();
-        gnssReading = gnss.read();
 
-        // Update battery level
-    }
+#ifdef USE_TIMERS
+        Serial.print("IMU read time (us): ");
+        Serial.println(micros() - t0_imuRead);
+#endif
 
-    // Position loop
-    if (gnssReading) {
-        barometer.read();
-        if (gnssData.fixType == 6) {
-            ukf.updateBarometer();
-            ukf.updateGNSS();
+        if (gnss.read()) {
+            if (gnssData.fixType == 6) {
+#ifdef USE_TIMERS
+                unsigned long t0_gnssUpdate = micros();
+#endif
+
+                ukf.updateGNSS();
+
+#ifdef USE_TIMERS
+                Serial.print("GNSS update time (us): ");
+                Serial.println(micros() - t0_gnssUpdate);
+#endif
+            }
         }
+        if (gnssData.fixType == 6) {
+#ifdef USE_TIMERS
+            unsigned long t0_predictStep = micros();
+#endif
+
+            ukf.predict(1.0f / IMU_FREQ_HZ);
+
+#ifdef USE_TIMERS
+            Serial.print("Predict step time (us): ");
+            Serial.println(micros() - t0_predictStep);
+#endif
+        }
+#ifndef USE_TIMERS
+        printState();
+#endif
+        // Update battery level
     }
 
     // Telemetry loop
     if (telemTimer >= TELEMETRY_PERIOD_US) {
         telemTimer -= TELEMETRY_PERIOD_US;
-        if (gnssData.fixType == 6) {
-            printState();
-        } else {
-            printSensors();
-        }
+
+#ifdef USE_TIMERS
+        unsigned long t0_telemetrySend = micros();
+#endif
+
         sendTelemetry();
+
+#ifdef USE_TIMERS
+        Serial.print("Telem send time (us): ");
+        Serial.println(micros() - t0_telemetrySend);
+#endif
     }
 }
 void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
@@ -190,12 +233,8 @@ void FlightController::printState() {
     Serial.print(posvel.velE);
     Serial.print(",");
     Serial.print(posvel.velD);
-    Serial.println();
-}
-
-void FlightController::printSensors() {
-    Serial.print(millis());
     Serial.print(",");
+
     Serial.print(attitude.qw);
     Serial.print(",");
     Serial.print(attitude.qi);
@@ -240,10 +279,7 @@ void FlightController::printSensors() {
     Serial.print(",");
     Serial.print(gnssData.numSV);
     Serial.print(",");
-    Serial.print(gnssData.fixType);
-    Serial.print(",");
-    Serial.print(barometerData.altBaro);
-    Serial.println();
+    Serial.println(gnssData.fixType);
 }
 
 uint16_t FlightController::crc16_ccitt(const uint8_t* data, size_t len) {
@@ -273,7 +309,7 @@ void FlightController::sendRawFramed(const uint8_t* unescaped, size_t unescapedL
     Serial1.write(STX);
     for (size_t i = 0; i < unescapedLen; ++i) writeEscapedByte(unescaped[i]);
     Serial1.write(STX);
-    Serial1.flush();
+    // Serial1.flush();
 }
 
 void FlightController::sendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen) {
@@ -342,9 +378,6 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     *p++ = gnssData.numSV;
     *p++ = gnssData.fixType;
 
-    memcpy(p, &barometerData.altBaro, sizeof(barometerData.altBaro));
-    p += sizeof(barometerData.altBaro);
-
     memcpy(p, &battery.currentDraw, sizeof(battery.currentDraw));
     p += sizeof(battery.currentDraw);
     memcpy(p, &battery.currentConsumed, sizeof(battery.currentConsumed));
@@ -370,6 +403,104 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     p += sizeof(actuators.servoYAngle);
 
     outLen = p - buf;
+}
+
+void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
+    // payload[0] = message_type
+    if (payloadLen < 1) return;
+    uint8_t header = payload[0];
+    // commands mapping:
+    switch (header) {
+        case MSG_FLY:
+            // start flight
+            // implement your flight start logic here
+            // NOTE: we already echoed the frame back before executing
+            command.setLedColor(0, 0, 0);
+            //
+            break;
+
+        case MSG_LEG: {
+            if (payloadLen >= 2) {
+                uint8_t val = payload[1];
+                // val will be 0x9D or 0xA9 per GUI
+                // implement leg actuation: map to your hardware
+                actuators.legsPosition = (val == 0x9D) ? 0xFE : 0xFA;  // example: set state to deployed/
+                command.setLedColor(0, 0, 1);
+                if (val == 0x9D) {
+                    command.extendLegs(1);
+                } else if (val == 0xA9) {
+                    command.extendLegs(0);
+                }
+            }
+
+            break;
+        }
+
+        case MSG_BAT: {
+            if (payloadLen >= 3) {
+                uint16_t mah = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
+                command.setLedColor(0, 1, 0);
+                // store/handle accordingly
+            }
+
+            break;
+        }
+
+        case MSG_CTRL:
+            if (payloadLen >= 2) {
+                uint8_t ctrl = payload[1];
+                command.setLedColor(1, 0, 0);
+                // handle enabling/disabling controllers
+            }
+
+            break;
+
+        case MSG_ORIG:
+            // set origin logic + tare barometer
+            command.setLedColor(1, 0, 1);
+            break;
+
+        case MSG_ENG:
+            if (payloadLen >= 3) {
+                uint8_t m1 = payload[1];
+                uint8_t m2 = payload[2];
+                command.commandMotors(m1, m2);
+                command.setLedColor(1, 1, 0);
+                // set motor throttles (percent)
+            }
+            break;
+
+        case MSG_STOP:
+            // stop motors immediately
+            command.setLedColor(1, 1, 1);
+            break;
+
+        case MSG_LAND:
+            // landing logic
+            break;
+
+        case MSG_REC:
+            if (payloadLen >= 2) {
+                uint8_t rec = payload[1];
+                if (rec == 0xE6) {  // start rec
+                    if (!isRecording) {
+                        isRecording = true;
+                        // start sd logging
+                    }
+                } else if (rec == 0xF1) {  // stop rec
+                    if (isRecording) {
+                        isRecording = false;
+                        // stop sd logging
+                    }
+                }
+            }
+            break;
+
+        default:
+            Serial.print("Unknown command type ");
+            Serial.println(header, HEX);
+            break;
+    }
 }
 
 void FlightController::processCompleteUnescapedFrame(const uint8_t* buf, size_t len) {
@@ -441,4 +572,63 @@ void FlightController::processIncomingByte(uint8_t b) {
     } else {
         if (frameBufLen < MAX_FRAME_BUFFER) frameBuf[frameBufLen++] = b;
     }
+}
+
+// build the escaped frame into outBuf and return outLen
+size_t buildEscapedFramed(const uint8_t* unescaped, size_t unescapedLen, uint8_t* outBuf, size_t outBufMax) {
+    size_t outPos = 0;
+    if (outPos < outBufMax) outBuf[outPos++] = STX;
+    for (size_t i = 0; i < unescapedLen; ++i) {
+        uint8_t b = unescaped[i];
+        if (b == STX || b == DLE) {
+            if (outPos + 2 > outBufMax) return 0;  // overflow
+            outBuf[outPos++] = DLE;
+            outBuf[outPos++] = b ^ XOR_MASK;
+        } else {
+            if (outPos + 1 > outBufMax) return 0;  // overflow
+            outBuf[outPos++] = b;
+        }
+    }
+    if (outPos < outBufMax) outBuf[outPos++] = STX;
+    return outPos;
+}
+
+// Non-blocking send: writes only if TX buffer has enough room
+bool FlightController::trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen) {
+    // framed unescaped = [len_low, len_hi, payloadWithCrc...]
+    static uint8_t framedUnescaped[2 + 1024];
+    framedUnescaped[0] = payloadLen & 0xFF;
+    framedUnescaped[1] = (payloadLen >> 8) & 0xFF;
+    memcpy(framedUnescaped + 2, payloadWithCrc, payloadLen);
+    size_t unescapedLen = 2 + payloadLen;
+
+    // build escaped frame into a local buffer
+    static uint8_t outBuf[2 + 2 * (1024 + 2)];  // worst-case space
+    size_t outLen = buildEscapedFramed(framedUnescaped, unescapedLen, outBuf, sizeof(outBuf));
+    if (outLen == 0) return false;  // trouble building
+
+    // Safe to write without blocking
+    Serial1.write(outBuf, outLen);
+    // DO NOT call Serial1.flush()
+    return true;
+}
+
+void FlightController::sendTelemetry() {
+    // Build packed payload (message_type + fields) into a local buffer
+    uint8_t rawBuf[1024];
+    size_t payloadNoCrcLen = 0;
+    // reuse buildPackedPayload idea
+    buildPackedPayload(rawBuf + 0, payloadNoCrcLen);  // returns payloadNoCrc in rawBuf
+
+    // compute CRC over payloadNoCrc
+    uint16_t crc = crc16_ccitt(rawBuf, payloadNoCrcLen);
+
+    // build payloadWithCrc in separate buffer
+    uint8_t payloadWithCrc[1024];
+    memcpy(payloadWithCrc, rawBuf, payloadNoCrcLen);
+    payloadWithCrc[payloadNoCrcLen++] = crc & 0xFF;
+    payloadWithCrc[payloadNoCrcLen++] = (crc >> 8) & 0xFF;
+
+    // send framed
+    trySendPayloadWithCrc(payloadWithCrc, payloadNoCrcLen);
 }

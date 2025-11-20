@@ -1,9 +1,10 @@
 #ifndef UKF_H
 #define UKF_H
 
-#include "Utils.hpp"
 #include <Eigen/LU>
 #include <cmath>
+
+#include "Utils.hpp"
 using namespace Eigen;
 
 #define N_STATE 6
@@ -13,58 +14,51 @@ using namespace Eigen;
 
 class UKF {
 public:
-    UKF(PosVel &posvel,
-        Attitude &attitude,
-        IMUAcceleration &imuAcc,
-        GNSSData &gnssData, 
-        BarometerData &barometerData):
-    posvel_(posvel),
-    attitude_(attitude),
-    imuAcc_(imuAcc),
-    gnssData_(gnssData),
-    barometerData_(barometerData)
-    {}
+    UKF(PosVel& posvel,
+        Attitude& attitude,
+        IMUAcceleration& imuAcc,
+        GNSSData& gnssData) : posvel_(posvel),
+                              attitude_(attitude),
+                              imuAcc_(imuAcc),
+                              gnssData_(gnssData) {}
 
     void setup();
     void predict(float dt);
     void updateGNSS();
-    void updateBarometer();
 
 private:
     void fx(Eigen::Ref<Eigen::MatrixXf> x, float dt);
     void generateSigmaPoints();
     void computeQ(float dt);
 
-    template<int N>
-    Eigen::Matrix<float, N, 1> weightedMean(const Eigen::Matrix<float, N, N_SIGMA> &sigmaMat);
+    template <int N>
+    Eigen::Matrix<float, N, 1> weightedMean(const Eigen::Matrix<float, N, N_SIGMA>& sigmaMat);
 
-    template<int N, int M>
+    template <int N, int M>
     Eigen::Matrix<float, N, M> weightedCovariance(
-        const Eigen::Matrix<float, N, N_SIGMA> &X_sigma,
-        const Eigen::Matrix<float, N, 1>       &x_mean,
-        const Eigen::Matrix<float, M, N_SIGMA> &Y_sigma,
-        const Eigen::Matrix<float, M, 1>       &y_mean);
+        const Eigen::Matrix<float, N, N_SIGMA>& X_sigma,
+        const Eigen::Matrix<float, N, 1>& x_mean,
+        const Eigen::Matrix<float, M, N_SIGMA>& Y_sigma,
+        const Eigen::Matrix<float, M, 1>& y_mean);
 
-    PosVel &posvel_;
-    Attitude &attitude_;
-    IMUAcceleration &imuAcc_;
-    GNSSData &gnssData_;
-    BarometerData &barometerData_;
+    PosVel& posvel_;
+    Attitude& attitude_;
+    IMUAcceleration& imuAcc_;
+    GNSSData& gnssData_;
 
     MatrixXf state;
     MatrixXf x;  // estimated state vector
 
     // Rocket/IMU parameters
-    float dz_IMU = 0.0f;
-    float dz_GNSS = 0.0f;
-    float dz_BARO = 0.0f;
+    float dz_IMU = 0.207f;
+    float dz_GNSS = 0.475f;
     float sigma_a = 0.02f;
     float sigma_vel = 0.1f;
 
     // Sigma points
     MatrixXf sigma;
     float W_CENTRAL = 0.5f;
-    float W_OTHER = 0.5f / (N_SIGMA-1);
+    float W_OTHER = 0.5f / (N_SIGMA - 1);
     static constexpr float SCALE = 0.775f;
 
     MatrixXf pos;
@@ -86,11 +80,6 @@ private:
     MatrixXf K_GNSS;
 
     // Barometer update
-    float z_BARO;
-    float R_BARO = 0.25f;
-    float S_BARO;
-    MatrixXf K_BARO;
-
 };
 
 #endif
