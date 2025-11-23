@@ -37,6 +37,7 @@ void IMU::read() {
                     qIMU2 = sensorValue.un.rotationVector.j;
                     qIMU3 = sensorValue.un.rotationVector.k;
 
+                    Serial.print("IMU Quat:\t");
                     Serial.print(qIMU0);
                     Serial.print("\t");
                     Serial.print(qIMU1);
@@ -72,44 +73,29 @@ void IMU::read() {
     }
 }
 
-void IMU::imuQuatToCadQuat(const Eigen::Quaternionf& q_imu, Eigen::Quaternionf& q_cad) {
+void IMU::imuEnuToCadNedQuat(const Eigen::Quaternionf& q_imu, Eigen::Quaternionf& q_ned_cad) {
     // Ensure input normalized to avoid numerical issues
-    Eigen::Quaternionf qn = q_imu.normalized();
+    Eigen::Quaternionf q_enu_imu = q_imu.normalized();
 
-    // Rotation matrix from ENU -> IMU
-    Eigen::Matrix3f R_imu = qn.toRotationMatrix();
+    // Fixed quaternion encoding the axis mapping between the CAD and the IMU
+    const Eigen::Quaternionf q_imu_cad = Eigen::Quaternionf(-0.5, -0.5, 0.5, 0.5);  // w,x,y,z
 
-    // P: maps NED vector components into ENU components (v_ENU = P * v_NED)
-    // As derived: ENU.x = E, ENU.y = N, ENU.z = U  and NED = [N,E,D]
-    // P defined so that v_ENU = P * v_NED
-    Eigen::Matrix3f P;
-    P << 0.0f, 1.0f, 0.0f,  // ENU.x =  0*N + 1*E + 0*D
-        1.0f, 0.0f, 0.0f,   // ENU.y =  1*N + 0*E + 0*D
-        0.0f, 0.0f, -1.0f;  // ENU.z =  0*N + 0*E + -1*D
+    // Fixed quaternion that converts ENU to NED
+    const Eigen::Quaternionf q_ned_enu = Eigen::Quaternionf(0, 0.7071068, 0.7071068, 0);  // w,x,y,z
 
-    // M: maps IMU -> CAD (v_CAD = M * v_IMU) using:
-    // X_CAD = -Y_IMU
-    // Y_CAD =  Z_IMU
-    // Z_CAD = -X_IMU
-    Eigen::Matrix3f M;
-    M << 0.0f, -1.0f, 0.0f,
-        0.0f, 0.0f, 1.0f,
-        -1.0f, 0.0f, 0.0f;
+    // Combine the rotations: q_ned_cad = q_ned_enu * q_enu_imu * q_imu_cad
+    Eigen::Quaternionf q_cad = q_ned_enu * q_enu_imu * q_imu_cad;
 
-    // Compose: R_cad maps NED -> CAD
-    // R_cad = M * R_imu * P
-    Eigen::Matrix3f R_cad = M * R_imu * P;
-
-    // Convert back to quaternion: Eigen can construct from rotation matrix
-    q_cad = Eigen::Quaternionf(R_cad).normalized();
+    // Normalize output quaternion
+    q_ned_cad = q_cad.normalized();
 }
 
 // Convenience wrapper using floats (w,x,y,z)
-void IMU::imuQuatToCadQuatf(float qw_in, float qx_in, float qy_in, float qz_in,
-                            float& qw_out, float& qx_out, float& qy_out, float& qz_out) {
-    Eigen::Quaternionf q_imu(qw_in, qx_in, qz_in, qy_in);  // (w,x,z,y)
+void IMU::imuEnuToCadNedQuatf(float qw_in, float qx_in, float qy_in, float qz_in,
+                              float& qw_out, float& qx_out, float& qy_out, float& qz_out) {
+    Eigen::Quaternionf q_imu(qw_in, qx_in, qy_in, qz_in);  // (w,x,y,z)
     Eigen::Quaternionf q_cad;
-    imuQuatToCadQuat(q_imu, q_cad);
+    imuEnuToCadNedQuat(q_imu, q_cad);
     qw_out = q_cad.w();
     qx_out = q_cad.x();
     qy_out = q_cad.y();
