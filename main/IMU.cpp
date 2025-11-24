@@ -20,34 +20,61 @@ void IMU::read() {
         switch (sensorValue.sensorId) {
             case SH2_LINEAR_ACCELERATION:
                 if (!acc) {
-                    imuAcc_.ax = -sensorValue.un.linearAcceleration.y;
-                    imuAcc_.ay = sensorValue.un.linearAcceleration.z;
-                    imuAcc_.az = -sensorValue.un.linearAcceleration.x;
+                    float ax_IMU = sensorValue.un.linearAcceleration.x;
+                    float ay_IMU = sensorValue.un.linearAcceleration.y;
+                    float az_IMU = sensorValue.un.linearAcceleration.z;
                     acc = true;
-                    // TODO : Convert the acceleration from CAD frame to NED
-                    // frame, by using the converted rotation vector quaternion
-                    // (that does NED -> CAD)
+                    
+                    Serial.print("Raw acc:\t");
+                    Serial.print(ax_IMU);
+                    Serial.print("\t");
+                    Serial.print(ay_IMU);
+                    Serial.print("\t");
+                    Serial.println(az_IMU);
+                    
+                    imuAccToNED(ax_IMU, ay_IMU, az_IMU, imuAcc_.ax_NED, imuAcc_.ay_NED, imuAcc_.az_NED);
+
+                    Serial.print("Acceleration in NED:\t");
+                    Serial.print(imuAcc_.ax_NED);
+                    Serial.print("\t");
+                    Serial.print(imuAcc_.ay_NED);
+                    Serial.print("\t");
+                    Serial.println(imuAcc_.az_NED);
                 }
                 break;
 
             case SH2_ROTATION_VECTOR:
                 if (!quat) {
-                    qIMU0 = sensorValue.un.rotationVector.real;
-                    qIMU1 = sensorValue.un.rotationVector.i;
-                    qIMU2 = sensorValue.un.rotationVector.j;
-                    qIMU3 = sensorValue.un.rotationVector.k;
+                    q_imu_to_enu.w() = sensorValue.un.rotationVector.real;
+                    q_imu_to_enu.x() = sensorValue.un.rotationVector.i;
+                    q_imu_to_enu.y() = sensorValue.un.rotationVector.j;
+                    q_imu_to_enu.z() = sensorValue.un.rotationVector.k;
 
-                    Serial.print("IMU Quat:\t");
-                    Serial.print(qIMU0);
+                    Serial.print("Quat IMU to ENU:\t");
+                    Serial.print(q_imu_to_enu.w());
                     Serial.print("\t");
-                    Serial.print(qIMU1);
+                    Serial.print(q_imu_to_enu.x());
                     Serial.print("\t");
-                    Serial.print(qIMU2);
+                    Serial.print(q_imu_to_enu.y());
                     Serial.print("\t");
-                    Serial.println(qIMU3);
+                    Serial.println(q_imu_to_enu.z());
 
-                    imuQuatToCadQuatf(qIMU0, qIMU1, qIMU2, qIMU3,
-                                      attitude_.qw, attitude_.qi, attitude_.qj, attitude_.qk);
+                    imuEnuToCadNedQuat();
+
+                    // Store the output quaternion in the attitude struct.
+                    attitude_.qw = q_cad_to_ned.w();
+                    attitude_.qi = q_cad_to_ned.x();
+                    attitude_.qj = q_cad_to_ned.y();
+                    attitude_.qk = q_cad_to_ned.z();
+
+                    Serial.print("Quat CAD to NED:\t");
+                    Serial.print(attitude_.qw);
+                    Serial.print("\t");
+                    Serial.print(attitude_.qi);
+                    Serial.print("\t");
+                    Serial.print(attitude_.qj);
+                    Serial.print("\t");
+                    Serial.println(attitude_.qk);
 
                     quat = true;
                 }
@@ -73,31 +100,31 @@ void IMU::read() {
     }
 }
 
-void IMU::imuEnuToCadNedQuat(const Eigen::Quaternionf& q_imu, Eigen::Quaternionf& q_ned_cad) {
+void IMU::imuEnuToCadNedQuat() {
     // Ensure input normalized to avoid numerical issues
-    Eigen::Quaternionf q_enu_imu = q_imu.normalized();
-
-    // Fixed quaternion encoding the axis mapping between the CAD and the IMU
-    const Eigen::Quaternionf q_imu_cad = Eigen::Quaternionf(-0.5, -0.5, 0.5, 0.5);  // w,x,y,z
-
-    // Fixed quaternion that converts ENU to NED
-    const Eigen::Quaternionf q_ned_enu = Eigen::Quaternionf(0, 0.7071068, 0.7071068, 0);  // w,x,y,z
+    q_imu_to_enu = q_imu_to_enu.normalized();
 
     // Combine the rotations: q_ned_cad = q_ned_enu * q_enu_imu * q_imu_cad
-    Eigen::Quaternionf q_cad = q_ned_enu * q_enu_imu * q_imu_cad;
+    q_cad_to_ned = q_enu_to_ned * q_imu_to_enu * q_cad_to_imu;
 
     // Normalize output quaternion
-    q_ned_cad = q_cad.normalized();
+    q_cad_to_ned = q_cad_to_ned.normalized();
 }
 
-// Convenience wrapper using floats (w,x,y,z)
-void IMU::imuEnuToCadNedQuatf(float qw_in, float qx_in, float qy_in, float qz_in,
-                              float& qw_out, float& qx_out, float& qy_out, float& qz_out) {
-    Eigen::Quaternionf q_imu(qw_in, qx_in, qy_in, qz_in);  // (w,x,y,z)
-    Eigen::Quaternionf q_cad;
-    imuEnuToCadNedQuat(q_imu, q_cad);
-    qw_out = q_cad.w();
-    qx_out = q_cad.x();
-    qy_out = q_cad.y();
-    qz_out = q_cad.z();
+void IMU::imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
+                      float& ax_NED, float& ay_NED, float& az_NED){
+    // Converts the acceleration from the IMU frame to the NED frame, to express the acceleration in world frame (NED)
+
+    // Acceleration vector in the frame of the IMU
+    Eigen::Vector3f acc_imu(ax_IMU, ay_IMU, az_IMU);
+
+    // Acceleration vector in the CAD frame, computed from the fixed quaternion that maps CAD to IMU.
+    Eigen::Vector3f acc_cad = q_cad_to_imu.inverse() * acc_imu;
+
+    // Rotate to from CAD frame to NED using quaternion-vector multiplication
+    Eigen::Vector3f acc_ned = q_cad_to_ned * acc_cad;
+
+    ax_NED = acc_ned.x();
+    ay_NED = acc_ned.y();
+    az_NED = acc_ned.z();
 }

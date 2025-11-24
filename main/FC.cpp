@@ -235,11 +235,11 @@ void FlightController::printState() {
     Serial.print(",");
     Serial.print(attitude.wz);
     Serial.print(",");
-    Serial.print(imuAcc.ax);
+    Serial.print(imuAcc.ax_NED);
     Serial.print(",");
-    Serial.print(imuAcc.ay);
+    Serial.print(imuAcc.ay_NED);
     Serial.print(",");
-    Serial.print(imuAcc.az);
+    Serial.print(imuAcc.az_NED);
     Serial.print(",");
     Serial.print(gnssData.lat);
     Serial.print(",");
@@ -317,12 +317,12 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     memcpy(p, &posvel.velD, sizeof(posvel.velD));
     p += sizeof(posvel.velD);
 
-    memcpy(p, &imuAcc.ax, sizeof(imuAcc.ax));
-    p += sizeof(imuAcc.ax);
-    memcpy(p, &imuAcc.ay, sizeof(imuAcc.ay));
-    p += sizeof(imuAcc.ay);
-    memcpy(p, &imuAcc.az, sizeof(imuAcc.az));
-    p += sizeof(imuAcc.az);
+    memcpy(p, &imuAcc.ax_NED, sizeof(imuAcc.ax_NED));
+    p += sizeof(imuAcc.ax_NED);
+    memcpy(p, &imuAcc.ay_NED, sizeof(imuAcc.ay_NED));
+    p += sizeof(imuAcc.ay_NED);
+    memcpy(p, &imuAcc.az_NED, sizeof(imuAcc.az_NED));
+    p += sizeof(imuAcc.az_NED);
 
     memcpy(p, &attitude.wx, sizeof(attitude.wx));
     p += sizeof(attitude.wx);

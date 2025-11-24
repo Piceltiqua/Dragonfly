@@ -95,9 +95,9 @@ void UKF::fx(Eigen::Ref<Eigen::MatrixXf> x, float dt) {
     pos = x.block(0, 0, 3, 1);
     vel = x.block(3, 0, 3, 1);
 
-    acc_body(0, 0) = imuAcc_.ax - (-dz_IMU * (attitude_.wy * attitude_.wy + attitude_.wz * attitude_.wz));
-    acc_body(1, 0) = imuAcc_.ay - (dz_IMU * (attitude_.wx * attitude_.wy));
-    acc_body(2, 0) = imuAcc_.az;
+    acc_body(0, 0) = imuAcc_.ax_NED - (-dz_IMU * (attitude_.wy * attitude_.wy + attitude_.wz * attitude_.wz));
+    acc_body(1, 0) = imuAcc_.ay_NED - (dz_IMU * (attitude_.wx * attitude_.wy));
+    acc_body(2, 0) = imuAcc_.az_NED;
 
     R(0, 0) = 2 * (attitude_.qi * attitude_.qj + attitude_.qw * attitude_.qk);
     R(0, 1) = 1 - 2 * (attitude_.qi * attitude_.qi + attitude_.qk * attitude_.qk);

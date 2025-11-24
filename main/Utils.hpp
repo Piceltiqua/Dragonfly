@@ -50,9 +50,9 @@ struct Attitude {
 };
 
 struct IMUAcceleration {
-    float ax = 0.0f;
-    float ay = 0.0f;
-    float az = 0.0f;
+    float ax_NED = 0.0f;
+    float ay_NED = 0.0f;
+    float az_NED = 0.0f;
 };
 
 struct GNSSData {
