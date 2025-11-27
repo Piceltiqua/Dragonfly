@@ -5,7 +5,7 @@
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(gnssData),
-      ukf(posvel, attitude, imuAcc, gnssData),
+      ekf(posvel, imuAcc, gnssData),
       battery(batteryStatus)
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, targetAttitude, waypoints)
@@ -15,7 +15,7 @@ void FlightController::setup() {
     imu.setup(IMU_FREQ_HZ);
     gnss.setup();
     command.setup();
-    ukf.setup();
+    ekf.setup();
     battery.setup();
 
     // Serial.begin(115200);
@@ -63,7 +63,7 @@ void FlightController::readSensors() {
                 unsigned long t0_gnssUpdate = micros();
 #endif
 
-                ukf.updateGNSS();
+                ekf.updateGNSS();
 
 #ifdef USE_TIMERS
                 Serial.print("GNSS update time (us): ");
@@ -76,7 +76,7 @@ void FlightController::readSensors() {
             unsigned long t0_predictStep = micros();
 #endif
 
-            ukf.predict(1.0f / IMU_FREQ_HZ);
+            ekf.predict(1.0f / IMU_FREQ_HZ);
 
 #ifdef USE_TIMERS
             Serial.print("Predict step time (us): ");
@@ -157,7 +157,7 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             break;
 
         case MSG_ORIG:
-            ukf.setup();
+            ekf.setup();
             gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
             command.setLedColor(1, 0, 1);
             break;

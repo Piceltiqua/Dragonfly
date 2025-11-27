@@ -4,7 +4,7 @@
 #include "Command.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
-#include "UKF.hpp"
+#include "EKF.hpp"
 #include "Utils.hpp"
 #include "Battery.hpp"
 // #include "AttitudeController.hpp"
@@ -49,7 +49,7 @@ private:
     IMU imu;
     GNSS gnss;
     Command command;
-    UKF ukf;
+    EKF ekf;
     Battery battery;
     // AttitudeController attCtrl;
     // PositionController posCtrl;
