@@ -4,7 +4,7 @@
 
 FlightController::FlightController()
     : imu(imuAcc, attitude),
-      gnss(gnssData),
+      gnss(attitude, gnssData),
       ukf(posvel, attitude, imuAcc, gnssData),
       battery(batteryStatus)
 // attitudeCtrl(attitude, actuatorCmds),
@@ -208,45 +208,45 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 void FlightController::printState() {
     Serial.print(millis());
     Serial.print(",");
-    Serial.print(posvel.posN);
-    Serial.print(",");
-    Serial.print(posvel.posE);
-    Serial.print(",");
-    Serial.print(posvel.posD);
-    Serial.print(",");
-    Serial.print(posvel.velN);
-    Serial.print(",");
-    Serial.print(posvel.velE);
-    Serial.print(",");
-    Serial.print(posvel.velD);
-    Serial.print(",");
+    // Serial.print(posvel.posN);
+    // Serial.print(",");
+    // Serial.print(posvel.posE);
+    // Serial.print(",");
+    // Serial.print(posvel.posD);
+    // Serial.print(",");
+    // Serial.print(posvel.velN);
+    // Serial.print(",");
+    // Serial.print(posvel.velE);
+    // Serial.print(",");
+    // Serial.print(posvel.velD);
+    // Serial.print(",");
 
-    Serial.print(attitude.qw);
-    Serial.print(",");
-    Serial.print(attitude.qi);
-    Serial.print(",");
-    Serial.print(attitude.qj);
-    Serial.print(",");
-    Serial.print(attitude.qk);
-    Serial.print(",");
-    Serial.print(attitude.wx);
-    Serial.print(",");
-    Serial.print(attitude.wy);
-    Serial.print(",");
-    Serial.print(attitude.wz);
-    Serial.print(",");
-    Serial.print(imuAcc.ax_NED);
-    Serial.print(",");
-    Serial.print(imuAcc.ay_NED);
-    Serial.print(",");
-    Serial.print(imuAcc.az_NED);
-    Serial.print(",");
-    Serial.print(gnssData.lat);
-    Serial.print(",");
-    Serial.print(gnssData.lon);
-    Serial.print(",");
-    Serial.print(gnssData.alt);
-    Serial.print(",");
+    // Serial.print(attitude.qw);
+    // Serial.print(",");
+    // Serial.print(attitude.qi);
+    // Serial.print(",");
+    // Serial.print(attitude.qj);
+    // Serial.print(",");
+    // Serial.print(attitude.qk);
+    // Serial.print(",");
+    // Serial.print(attitude.wx);
+    // Serial.print(",");
+    // Serial.print(attitude.wy);
+    // Serial.print(",");
+    // Serial.print(attitude.wz);
+    // Serial.print(",");
+    // Serial.print(imuAcc.ax_NED);
+    // Serial.print(",");
+    // Serial.print(imuAcc.ay_NED);
+    // Serial.print(",");
+    // Serial.print(imuAcc.az_NED);
+    // Serial.print(",");
+    // Serial.print(gnssData.lat);
+    // Serial.print(",");
+    // Serial.print(gnssData.lon);
+    // Serial.print(",");
+    // Serial.print(gnssData.alt);
+    // Serial.print(",");
     Serial.print(gnssData.posN);
     Serial.print(",");
     Serial.print(gnssData.posE);

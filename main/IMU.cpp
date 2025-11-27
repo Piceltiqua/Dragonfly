@@ -23,23 +23,10 @@ void IMU::read() {
                     float ax_IMU = sensorValue.un.linearAcceleration.x;
                     float ay_IMU = sensorValue.un.linearAcceleration.y;
                     float az_IMU = sensorValue.un.linearAcceleration.z;
-                    acc = true;
-                    
-                    Serial.print("Raw acc:\t");
-                    Serial.print(ax_IMU);
-                    Serial.print("\t");
-                    Serial.print(ay_IMU);
-                    Serial.print("\t");
-                    Serial.println(az_IMU);
-                    
+
                     imuAccToNED(ax_IMU, ay_IMU, az_IMU, imuAcc_.ax_NED, imuAcc_.ay_NED, imuAcc_.az_NED);
 
-                    Serial.print("Acceleration in NED:\t");
-                    Serial.print(imuAcc_.ax_NED);
-                    Serial.print("\t");
-                    Serial.print(imuAcc_.ay_NED);
-                    Serial.print("\t");
-                    Serial.println(imuAcc_.az_NED);
+                    acc = true;
                 }
                 break;
 
@@ -50,15 +37,6 @@ void IMU::read() {
                     q_imu_to_enu.y() = sensorValue.un.rotationVector.j;
                     q_imu_to_enu.z() = sensorValue.un.rotationVector.k;
 
-                    Serial.print("Quat IMU to ENU:\t");
-                    Serial.print(q_imu_to_enu.w());
-                    Serial.print("\t");
-                    Serial.print(q_imu_to_enu.x());
-                    Serial.print("\t");
-                    Serial.print(q_imu_to_enu.y());
-                    Serial.print("\t");
-                    Serial.println(q_imu_to_enu.z());
-
                     imuEnuToCadNedQuat();
 
                     // Store the output quaternion in the attitude struct.
@@ -66,15 +44,6 @@ void IMU::read() {
                     attitude_.qi = q_cad_to_ned.x();
                     attitude_.qj = q_cad_to_ned.y();
                     attitude_.qk = q_cad_to_ned.z();
-
-                    Serial.print("Quat CAD to NED:\t");
-                    Serial.print(attitude_.qw);
-                    Serial.print("\t");
-                    Serial.print(attitude_.qi);
-                    Serial.print("\t");
-                    Serial.print(attitude_.qj);
-                    Serial.print("\t");
-                    Serial.println(attitude_.qk);
 
                     quat = true;
                 }

@@ -1,45 +1,37 @@
 #ifndef IMU_H
 #define IMU_H
 
-#include "Utils.hpp"
 #include <Adafruit_BNO08x.h>
-#include <Eigen/Dense>
-#include <Eigen/Geometry>
+
+#include "Utils.hpp"
 
 #define IMU_TIMEOUT 1000
 
 class IMU {
 public:
-  IMU(IMUAcceleration& imuAcc, Attitude& attitude)
-    : imuAcc_(imuAcc),
-      attitude_(attitude) {}
+    IMU(IMUAcceleration& imuAcc, Attitude& attitude)
+        : imuAcc_(imuAcc),
+          attitude_(attitude) {}
 
-  void setup(int imu_freq);
-  void read();
-  void imuEnuToCadNedQuat();
-  void imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
-                      float& ax_NED, float& ay_NED, float& az_NED);
+    void setup(int imu_freq);
+    void read();
+    void imuEnuToCadNedQuat();
+    void imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
+                     float& ax_NED, float& ay_NED, float& az_NED);
 
 private:
-  Adafruit_BNO08x bno08x_{ Serial4 };
-  sh2_SensorValue_t sensorValue;
+    Adafruit_BNO08x bno08x_{Serial4};
+    sh2_SensorValue_t sensorValue;
 
-  IMUAcceleration& imuAcc_;
-  Attitude& attitude_;
+    IMUAcceleration& imuAcc_;
+    Attitude& attitude_;
 
-  uint32_t t0;
-  bool acc, gyro, quat;
-  float qIMU0, qIMU1, qIMU2, qIMU3;
+    uint32_t t0;
+    bool acc, gyro, quat;
+    float qIMU0, qIMU1, qIMU2, qIMU3;
 
-  // Fixed quaternion encoding the axis mapping between the CAD and the IMU
-  const Eigen::Quaternionf q_cad_to_imu = Eigen::Quaternionf(-0.5, -0.5, 0.5, 0.5);  // w,x,y,z
-  // Fixed quaternion that converts ENU to NED
-  const Eigen::Quaternionf q_enu_to_ned = Eigen::Quaternionf(0, 0.7071068, 0.7071068, 0);  // w,x,y,z
-
-  Eigen::Quaternionf q_imu_to_enu = Eigen::Quaternionf(1, 0, 0, 0); // Stores the raw reading from IMU.
-  Eigen::Quaternionf q_cad_to_ned = Eigen::Quaternionf(1, 0, 0, 0); // Stores the transformed quaternion that maps CAD to NED.
-
-
+    Eigen::Quaternionf q_imu_to_enu = Eigen::Quaternionf(1, 0, 0, 0);  // Stores the raw reading from IMU.
+    Eigen::Quaternionf q_cad_to_ned = Eigen::Quaternionf(1, 0, 0, 0);  // Stores the transformed quaternion that maps CAD to NED.
 };
 
 #endif
