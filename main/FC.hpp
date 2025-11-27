@@ -6,6 +6,8 @@
 #include "IMU.hpp"
 #include "UKF.hpp"
 #include "Utils.hpp"
+#include "LQR_attitude.hpp"
+#include <Eigen/LU>
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
 
@@ -44,25 +46,38 @@ private:
     GNSSData gnssData;
     BatteryStatus battery;
     ActuatorCommands actuators;
-
+    
     IMU imu;
     GNSS gnss;
     Command command;
     UKF ukf;
     // AttitudeController attCtrl;
+    LQR_attitude attitudeCtrl;
     // PositionController posCtrl;
 
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
-
+    //Controleur constants
+    Eigen::Matrix<float, 2, 4> K_lqr =
+        (Eigen::Matrix<float, 2, 4>() << 0.4472f, 0.0f, 0.2184f, 0.0f,
+                                   0.0f, 0.4472f, 0.0f, 0.2185f)
+            .finished();
+    Attitude_angle lqr_att;
+    Attitude_angle current_attitude;
+    rotationspeed lqr_rates;
+    AttitudeSetpoint lqr_sp;
+    ControlOutput_attitude lqr_out;
+    
     // Telemetry constants
     bool isRecording = false;
     bool inFrame = false;
     bool escapeNext = false;
     uint8_t frameBuf[MAX_FRAME_BUFFER];
     size_t frameBufLen = 0;
-
+    //conversion quaternion to euler angles
+    void quaternionToEuler(float qw, float qi, float qj, float qk,
+                           float &roll, float &pitch, float &yaw);
     // Telemetry functions
     void processIncomingByte(uint8_t b);  // Read incoming data
     void sendTelemetry();
@@ -74,6 +89,7 @@ private:
     void executeCommandFromPayload(const uint8_t* payload, size_t payloadLen);
     void processCompleteUnescapedFrame(const uint8_t* buf, size_t len);
     bool trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen);
+    void AttitudeHold();
 };
 
 #endif

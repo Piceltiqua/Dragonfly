@@ -5,7 +5,8 @@
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(gnssData),
-      ukf(posvel, attitude, imuAcc, gnssData)
+      ukf(posvel, attitude, imuAcc, gnssData),
+      attitudeCtrl()
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, targetAttitude, waypoints)
 {}
@@ -15,6 +16,8 @@ void FlightController::setup() {
     gnss.setup();
     command.setup();
     ukf.setup();
+    
+    attitudeCtrl.init(K_lqr);
 
     // Serial.begin(115200);
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
@@ -99,6 +102,15 @@ void FlightController::readSensors() {
         Serial.println(micros() - t0_telemetrySend);
 #endif
     }
+    quaternionToEuler(attitude.qw, attitude.qi, attitude.qj, attitude.qk,
+                          current_attitude.roll, current_attitude.pitch, current_attitude.yaw);
+    lqr_att.roll = current_attitude.roll;
+    lqr_att.pitch = current_attitude.pitch;
+    lqr_att.yaw = current_attitude.yaw;
+    lqr_rates.p = attitude.wx;
+    lqr_rates.q = attitude.wy;
+    lqr_rates.r = attitude.wz;
+    AttitudeHold();
 }
 
 void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
@@ -111,9 +123,10 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             // start flight
             // implement your flight start logic here
             // NOTE: we already echoed the frame back before executing
-            command.setLedColor(0, 0, 0);
+            command.setLedColor(0, 1, 0);
             //
             break;
+        
 
         case MSG_LEG: {
             if (payloadLen >= 2) {
@@ -504,4 +517,39 @@ void FlightController::sendTelemetry() {
 
     // send framed
     trySendPayloadWithCrc(payloadWithCrc, payloadNoCrcLen);
+}
+
+
+void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
+                           float &roll, float &pitch, float &yaw) {
+    float sinr_cosp = 2.0f * (qw * qi + qj * qk);
+    float cosr_cosp = 1.0f - 2.0f * (qi * qi + qj * qj);
+    float rollX = atan2f(sinr_cosp, cosr_cosp);
+
+    float sinp = 2.0f * (qw * qj - qk * qi);
+    float pitchY;
+    if (fabsf(sinp) >= 1.0f)
+        pitchY = copysignf(M_PI_2, sinp);
+    else
+        pitchY = asinf(sinp);
+
+    float siny_cosp = 2.0f * (qw * qk + qi * qj);
+    float cosy_cosp = 1.0f - 2.0f * (qj * qj + qk * qk);
+    float yawZ = atan2f(siny_cosp, cosy_cosp);
+
+    roll  = yawZ;   
+    pitch = pitchY; 
+    yaw   = rollX;  
+}
+
+void FlightController::AttitudeHold() {
+    // LQR attitude controller for pitch and yaw stabilization
+    lqr_sp.pitch = 0.0f; // desired pitch angle setpoint
+    lqr_sp.yaw = 0.0f;   // desired yaw angle setpoint
+    attitudeCtrl.compute(lqr_att, lqr_rates, lqr_sp, lqr_out);
+
+    actuators.servoXAngle = lqr_out.pitchOutput;
+    actuators.servoYAngle = lqr_out.yawOutput;
+
+    command.commandGimbal(actuators.servoXAngle, actuators.servoYAngle);
 }
