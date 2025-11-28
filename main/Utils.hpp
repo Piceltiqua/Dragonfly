@@ -60,6 +60,7 @@ struct IMUAcceleration {
   float ax_NED = 0.0f;
   float ay_NED = 0.0f;
   float az_NED = 0.0f;
+  uint8_t accuracy_status = 0;
 };
 
 struct GNSSData {

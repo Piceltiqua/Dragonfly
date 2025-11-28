@@ -323,6 +323,8 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     p += sizeof(imuAcc.ay_NED);
     memcpy(p, &imuAcc.az_NED, sizeof(imuAcc.az_NED));
     p += sizeof(imuAcc.az_NED);
+    memcpy(p, &imuAcc.accuracy_status, sizeof(imuAcc.accuracy_status));
+    p += sizeof(imuAcc.accuracy_status);
 
     memcpy(p, &attitude.wx, sizeof(attitude.wx));
     p += sizeof(attitude.wx);

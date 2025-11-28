@@ -23,6 +23,7 @@ void IMU::read() {
                     float ax_IMU = sensorValue.un.linearAcceleration.x;
                     float ay_IMU = sensorValue.un.linearAcceleration.y;
                     float az_IMU = sensorValue.un.linearAcceleration.z;
+                    imuAcc_.accuracy_status = sensorValue.status; // Calibration accuracy in the form of a number from 0 to 3
 
                     imuAccToNED(ax_IMU, ay_IMU, az_IMU, imuAcc_.ax_NED, imuAcc_.ay_NED, imuAcc_.az_NED);
 
@@ -51,9 +52,9 @@ void IMU::read() {
 
             case SH2_GYROSCOPE_CALIBRATED:
                 if (!gyro) {
-                    attitude_.wx = -sensorValue.un.gyroscope.y;
-                    attitude_.wy = sensorValue.un.gyroscope.z;
-                    attitude_.wz = -sensorValue.un.gyroscope.x;
+                    attitude_.wx = sensorValue.un.gyroscope.x;
+                    attitude_.wy = sensorValue.un.gyroscope.y;
+                    attitude_.wz = sensorValue.un.gyroscope.z;
                     gyro = true;
                 }
                 break;
@@ -81,7 +82,7 @@ void IMU::imuEnuToCadNedQuat() {
 }
 
 void IMU::imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
-                      float& ax_NED, float& ay_NED, float& az_NED){
+                      float& ax_NED, float& ay_NED, float& az_NED) {
     // Converts the acceleration from the IMU frame to the NED frame, to express the acceleration in world frame (NED)
 
     // Acceleration vector in the frame of the IMU

@@ -34,27 +34,6 @@ bool GNSS::read() {
       gnssData_.posE = 0;
       gnssData_.posD = 0;
     }
-    Serial.print(millis());
-    Serial.print(",");
-    Serial.print(gnssData_.posN);
-    Serial.print(",");
-    Serial.print(gnssData_.posE);
-    Serial.print(",");
-    Serial.print(gnssData_.posD);
-    Serial.print(",");
-    Serial.print(gnssData_.velN);
-    Serial.print(",");
-    Serial.print(gnssData_.velE);
-    Serial.print(",");
-    Serial.print(gnssData_.velD);
-    Serial.print(",");
-    Serial.print(gnssData_.horAcc);
-    Serial.print(",");
-    Serial.print(gnssData_.vertAcc);
-    Serial.print(",");
-    Serial.print(gnssData_.numSV);
-    Serial.print(",");
-    Serial.println(gnssData_.fixType);
   }
   return newReading;
 }
@@ -113,4 +92,86 @@ void GNSS::computeCGVelocityNED() {
   gnssData_.velN = v_cg_ned.x();
   gnssData_.velE = v_cg_ned.y();
   gnssData_.velD = v_cg_ned.z();
+
+  Serial.print(millis());
+  Serial.print(",");
+  Serial.print(gnssData_.posN);
+  Serial.print(",");
+  Serial.print(gnssData_.posE);
+  Serial.print(",");
+  Serial.print(gnssData_.posD);
+  Serial.print(",");
+  Serial.print(gnssData_.velN);
+  Serial.print(",");
+  Serial.print(gnssData_.velE);
+  Serial.print(",");
+  Serial.print(gnssData_.velD);
+  Serial.print(",");
+  Serial.print(gnssData_.horAcc);
+  Serial.print(",");
+  Serial.print(gnssData_.vertAcc);
+  Serial.print(",");
+  Serial.print(gnssData_.numSV);
+  Serial.print(",");
+  Serial.print(gnssData_.fixType);
+  Serial.print(",");
+
+  Serial.print(omega_IMU.x());
+  Serial.print(",");
+  Serial.print(omega_IMU.y());
+  Serial.print(",");
+  Serial.print(omega_IMU.z());
+  Serial.print(",");
+
+  Serial.print(omega_cad.x());
+  Serial.print(",");
+  Serial.print(omega_cad.y());
+  Serial.print(",");
+  Serial.print(omega_cad.z());
+  Serial.print(",");
+
+  Serial.print(omega_ned.x());
+  Serial.print(",");
+  Serial.print(omega_ned.y());
+  Serial.print(",");
+  Serial.print(omega_ned.z());
+  Serial.print(",");
+
+  Serial.print(p_ant_ned.x());
+  Serial.print(",");
+  Serial.print(p_ant_ned.y());
+  Serial.print(",");
+  Serial.print(p_ant_ned.z());
+  Serial.print(",");
+
+  Serial.print(v_ant_ned.x());
+  Serial.print(",");
+  Serial.print(v_ant_ned.y());
+  Serial.print(",");
+  Serial.print(v_ant_ned.z());
+  Serial.print(",");
+
+  Serial.print(v_cg_ned.x());
+  Serial.print(",");
+  Serial.print(v_cg_ned.y());
+  Serial.print(",");
+  Serial.print(v_cg_ned.z());
+  Serial.print(",");
+
+  Serial.print(q_cad_to_imu.w());
+  Serial.print(",");
+  Serial.print(q_cad_to_imu.x());
+  Serial.print(",");
+  Serial.print(q_cad_to_imu.y());
+  Serial.print(",");
+  Serial.print(q_cad_to_imu.z());
+  Serial.print(",");
+
+  Serial.print(q_cad_to_ned.w());
+  Serial.print(",");
+  Serial.print(q_cad_to_ned.x());
+  Serial.print(",");
+  Serial.print(q_cad_to_ned.y());
+  Serial.print(",");
+  Serial.println(q_cad_to_ned.z());
 }
