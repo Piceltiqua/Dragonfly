@@ -32,6 +32,9 @@ static constexpr uint8_t CTRL_ATT_OFF_POS_OFF = 0xB7;
 static constexpr uint8_t CTRL_ATT_ON_POS_OFF = 0xC3;
 static constexpr uint8_t CTRL_ATT_ON_POS_ON = 0xCC;
 
+// Use some RAM to increase the size of the UART TX buffer, ensures that the telemetry isn't blocking
+static uint8_t extra_tx_mem[128]; // Default size of the buffer is 63 bytes, adding this leaves space (64+128) for the telemetry packets (which are around 122 bytes).
+
 // Fixed quaternion encoding the axis mapping between the CAD and the IMU
 const Eigen::Quaternionf q_cad_to_imu = Eigen::Quaternionf(-0.5, -0.5, 0.5, 0.5);  // w,x,y,z
 // Fixed quaternion that converts ENU to NED

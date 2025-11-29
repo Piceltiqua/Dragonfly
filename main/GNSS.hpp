@@ -22,7 +22,7 @@ private:
     static constexpr double a = 6378137.0;
     static constexpr double f = 1.0 / 298.257223563;
     static constexpr double e2 = f * (2.0 - f);
-    const Eigen::Vector3f p_ant_cad = Eigen::Vector3f(0.0f, 0.0f, 0.475f);
+    const Eigen::Vector3f r_ant_cad = Eigen::Vector3f(0.0f, 0.0f, 0.475f);
 
     void computeCGPositionNED();
     void computeCGVelocityNED();
