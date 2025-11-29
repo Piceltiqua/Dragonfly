@@ -2,13 +2,8 @@
 
 FlightController::FlightController()
     : imu(imuAcc, attitude),
-<<<<<<< HEAD
       gnss(attitude, gnssData),
-      ukf(posvel, attitude, imuAcc, gnssData),
-=======
-      gnss(gnssData),
       ekf(posvel, imuAcc, gnssData),
->>>>>>> EKF
       battery(batteryStatus)
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, targetAttitude, waypoints)
@@ -46,11 +41,11 @@ void FlightController::readSensors() {
 
         if (gnss.read()) {
             if (gnssData.fixType == 6) {
-                ukf.updateGNSS();
+                ekf.updateGNSS();
             }
         }
         if (gnssData.fixType == 6) {
-            ukf.predict(1.0f / IMU_FREQ_HZ);
+            ekf.predict(1.0f / IMU_FREQ_HZ);
         }
         // printState();
         // Update battery level
