@@ -1,7 +1,5 @@
 #include "FC.hpp"
 
-// #define USE_TIMERS
-
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(attitude, gnssData),
@@ -20,22 +18,14 @@ void FlightController::setup() {
 
     // Serial.begin(115200);
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
+    Serial1.addMemoryForWrite(extra_tx_mem, sizeof(extra_tx_mem));
     delay(1000);
 }
 
 void FlightController::readSensors() {
     while (Serial1.available()) {
-#ifdef USE_TIMERS
-        unsigned long t0_telemReceive = micros();
-#endif
-
         int b = Serial1.read();
         if (b >= 0) processIncomingByte((uint8_t)b);
-
-#ifdef USE_TIMERS
-        Serial.print("Telem receive time (us): ");
-        Serial.println(micros() - t0_telemReceive);
-#endif
     }
 
     // Attitude loop
@@ -43,49 +33,21 @@ void FlightController::readSensors() {
         // Receive commands
         IMUTimer -= IMU_PERIOD_US;
 
-#ifdef USE_TIMERS
-        unsigned long t0_imuRead = micros();
-#endif
-
         imu.read();
 
-#ifdef USE_TIMERS
-        Serial.print("IMU read time (us): ");
-        Serial.println(micros() - t0_imuRead);
-#endif
         battery.readVoltage();
         battery.readCurrent();
         battery.integrateCurrentDraw();
 
         if (gnss.read()) {
             if (gnssData.fixType == 6) {
-#ifdef USE_TIMERS
-                unsigned long t0_gnssUpdate = micros();
-#endif
-
                 ukf.updateGNSS();
-
-#ifdef USE_TIMERS
-                Serial.print("GNSS update time (us): ");
-                Serial.println(micros() - t0_gnssUpdate);
-#endif
             }
         }
         if (gnssData.fixType == 6) {
-#ifdef USE_TIMERS
-            unsigned long t0_predictStep = micros();
-#endif
-
             ukf.predict(1.0f / IMU_FREQ_HZ);
-
-#ifdef USE_TIMERS
-            Serial.print("Predict step time (us): ");
-            Serial.println(micros() - t0_predictStep);
-#endif
         }
-#ifndef USE_TIMERS
         // printState();
-#endif
         // Update battery level
     }
 
@@ -93,16 +55,7 @@ void FlightController::readSensors() {
     if (telemTimer >= TELEMETRY_PERIOD_US) {
         telemTimer -= TELEMETRY_PERIOD_US;
 
-#ifdef USE_TIMERS
-        unsigned long t0_telemetrySend = micros();
-#endif
-
         sendTelemetry();
-
-#ifdef USE_TIMERS
-        Serial.print("Telem send time (us): ");
-        Serial.println(micros() - t0_telemetrySend);
-#endif
     }
 }
 
@@ -208,45 +161,45 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 void FlightController::printState() {
     Serial.print(millis());
     Serial.print(",");
-    // Serial.print(posvel.posN);
-    // Serial.print(",");
-    // Serial.print(posvel.posE);
-    // Serial.print(",");
-    // Serial.print(posvel.posD);
-    // Serial.print(",");
-    // Serial.print(posvel.velN);
-    // Serial.print(",");
-    // Serial.print(posvel.velE);
-    // Serial.print(",");
-    // Serial.print(posvel.velD);
-    // Serial.print(",");
+    Serial.print(posvel.posN);
+    Serial.print(",");
+    Serial.print(posvel.posE);
+    Serial.print(",");
+    Serial.print(posvel.posD);
+    Serial.print(",");
+    Serial.print(posvel.velN);
+    Serial.print(",");
+    Serial.print(posvel.velE);
+    Serial.print(",");
+    Serial.print(posvel.velD);
+    Serial.print(",");
 
-    // Serial.print(attitude.qw);
-    // Serial.print(",");
-    // Serial.print(attitude.qi);
-    // Serial.print(",");
-    // Serial.print(attitude.qj);
-    // Serial.print(",");
-    // Serial.print(attitude.qk);
-    // Serial.print(",");
-    // Serial.print(attitude.wx);
-    // Serial.print(",");
-    // Serial.print(attitude.wy);
-    // Serial.print(",");
-    // Serial.print(attitude.wz);
-    // Serial.print(",");
-    // Serial.print(imuAcc.ax_NED);
-    // Serial.print(",");
-    // Serial.print(imuAcc.ay_NED);
-    // Serial.print(",");
-    // Serial.print(imuAcc.az_NED);
-    // Serial.print(",");
-    // Serial.print(gnssData.lat);
-    // Serial.print(",");
-    // Serial.print(gnssData.lon);
-    // Serial.print(",");
-    // Serial.print(gnssData.alt);
-    // Serial.print(",");
+    Serial.print(attitude.qw);
+    Serial.print(",");
+    Serial.print(attitude.qi);
+    Serial.print(",");
+    Serial.print(attitude.qj);
+    Serial.print(",");
+    Serial.print(attitude.qk);
+    Serial.print(",");
+    Serial.print(attitude.wx);
+    Serial.print(",");
+    Serial.print(attitude.wy);
+    Serial.print(",");
+    Serial.print(attitude.wz);
+    Serial.print(",");
+    Serial.print(imuAcc.ax_NED);
+    Serial.print(",");
+    Serial.print(imuAcc.ay_NED);
+    Serial.print(",");
+    Serial.print(imuAcc.az_NED);
+    Serial.print(",");
+    Serial.print(gnssData.lat);
+    Serial.print(",");
+    Serial.print(gnssData.lon);
+    Serial.print(",");
+    Serial.print(gnssData.alt);
+    Serial.print(",");
     Serial.print(gnssData.posN);
     Serial.print(",");
     Serial.print(gnssData.posE);
@@ -488,9 +441,8 @@ bool FlightController::trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size
     size_t outLen = buildEscapedFramed(framedUnescaped, unescapedLen, outBuf, sizeof(outBuf));
     if (outLen == 0) return false;  // trouble building
 
-    // Safe to write without blocking
+    // Safe to write without blocking since we have a big TX buffer
     Serial1.write(outBuf, outLen);
-    // DO NOT call Serial1.flush()
     return true;
 }
 
@@ -498,6 +450,7 @@ void FlightController::sendTelemetry() {
     // Build packed payload (message_type + fields) into a local buffer
     uint8_t rawBuf[1024];
     size_t payloadNoCrcLen = 0;
+
     // reuse buildPackedPayload idea
     buildPackedPayload(rawBuf + 0, payloadNoCrcLen);  // returns payloadNoCrc in rawBuf
 
