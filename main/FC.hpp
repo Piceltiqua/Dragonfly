@@ -18,6 +18,9 @@
 
 #define MAX_FRAME_BUFFER 2048
 
+// Use some RAM to increase the size of the UART TX buffer, ensures that the telemetry isn't blocking
+inline uint8_t extra_tx_mem[128];  // Default size of the buffer is 63 bytes, adding this leaves space (64+128) for the telemetry packets (which are around 122 bytes).
+
 enum class FCState {
     NoFix,
     Idle,

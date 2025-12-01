@@ -11,12 +11,13 @@ bool GNSS::read() {
     newReading = ubx.Read();
 
     if (newReading) {
+        t_GNSS_read_us = micros() - GNSS_VEL_LATENCY_US;
         gnssData_.lat = ubx.lat_rad();
         gnssData_.lon = ubx.lon_rad();
         gnssData_.alt = ubx.alt_wgs84_m();
-        gnssData_.velN = ubx.north_vel_mps();
-        gnssData_.velE = ubx.east_vel_mps();
-        gnssData_.velD = ubx.down_vel_mps();
+        v_ant_ned.x() = ubx.north_vel_mps();
+        v_ant_ned.y() = ubx.east_vel_mps();
+        v_ant_ned.z() = ubx.down_vel_mps();
         gnssData_.horAcc = ubx.horz_acc_m();
         gnssData_.vertAcc = ubx.vert_acc_m();
         gnssData_.numSV = ubx.num_sv();
@@ -50,128 +51,115 @@ void GNSS::setReference(double lat0, double lon0, double alt0) {
 void GNSS::computeCGPositionNED() {
     Eigen::Quaternionf q_cad_to_ned(attitude_.qw, attitude_.qi, attitude_.qj, attitude_.qk);
     q_cad_to_ned.normalize();
-    Eigen::Vector3f offset_ned = q_cad_to_ned * r_ant_cad;
 
+    // Antenna position offset in NED frame
+    Eigen::Vector3f r_ant_ned = q_cad_to_ned * r_ant_cad;
+
+    // Measured antenna position in NED frame
     float posN_ant = (gnssData_.lat - gnssData_.lat0) * (M0 + gnssData_.alt0);
     float posE_ant = (gnssData_.lon - gnssData_.lon0) * (N0 + gnssData_.alt0) * cos(gnssData_.lat0);
     float posD_ant = (gnssData_.alt0 - gnssData_.alt);
-
     Eigen::Vector3f p_ant_ned(posN_ant, posE_ant, posD_ant);
 
-    Eigen::Vector3f p_cg_ned = p_ant_ned - offset_ned;
-
-    // Position of the center of gravity in NED frame
+    // CG position in NED frame
+    Eigen::Vector3f p_cg_ned = p_ant_ned - r_ant_ned;
     gnssData_.posN = p_cg_ned.x();
     gnssData_.posE = p_cg_ned.y();
     gnssData_.posD = p_cg_ned.z();
 }
 
 void GNSS::computeCGVelocityNED() {
-    Eigen::Quaternionf q_cad_to_ned(attitude_.qw, attitude_.qi, attitude_.qj, attitude_.qk);
-    q_cad_to_ned.normalize();
+    // Obtain omega_ned and r_ant_ned at t_GNSS_read_us via interpolation
+    if (!interpolateIMUSample()) {
+        Serial.print("GNSS::computeCGVelocityNED(): interpolation failed\n");
+    }
 
-    // IMU angular rates in IMU frame
-    Eigen::Vector3f omega_IMU(attitude_.wx, attitude_.wy, attitude_.wz);
+    // CG velocity in NED frame by subtracting the rotational component (cross product) from the total antenna velocity to obtain the velocity due to translation only
+    Eigen::Vector3f v_cg_ned = v_ant_ned - omega_ned_interp.cross(r_ant_ned_interp);
 
-    // Angular rates in CAD frame
-    Eigen::Vector3f omega_cad = q_cad_to_imu.conjugate() * omega_IMU;
+    // Store results with exponential smoothing
+    gnssData_.velN = alpha * v_cg_ned.x() + (1 - alpha) * gnssData_.velN;
+    gnssData_.velE = alpha * v_cg_ned.y() + (1 - alpha) * gnssData_.velE;
+    gnssData_.velD = alpha * v_cg_ned.z() + (1 - alpha) * gnssData_.velD;
 
-    // Angular rates in NED frame
-    Eigen::Vector3f omega_ned = q_cad_to_ned * omega_cad;
+    Serial.print(millis());
+    Serial.print(",");
+    Serial.print(gnssData_.posN);
+    Serial.print(",");
+    Serial.print(gnssData_.posE);
+    Serial.print(",");
+    Serial.print(gnssData_.posD);
+    Serial.print(",");
 
-    // Antenna position in NED frame
-    Eigen::Vector3f r_ant_ned = q_cad_to_ned * r_ant_cad;
+    Serial.print(gnssData_.velN);
+    Serial.print(",");
+    Serial.print(gnssData_.velE);
+    Serial.print(",");
+    Serial.print(gnssData_.velD);
+    Serial.print(",");
 
-    // Measured antenna velocity in NED frame
-    Eigen::Vector3f v_ant_ned(gnssData_.velN, gnssData_.velE, gnssData_.velD);
+    Serial.print(gnssData_.horAcc);
+    Serial.print(",");
+    Serial.print(gnssData_.vertAcc);
+    Serial.print(",");
+    Serial.print(gnssData_.numSV);
+    Serial.print(",");
+    Serial.print(gnssData_.fixType);
+    Serial.print(",");
 
-    // CG velocity in NED frame
-    Eigen::Vector3f v_cg_ned = v_ant_ned - omega_ned.cross(r_ant_ned);
+    Serial.print(omega_ned_interp.x());
+    Serial.print(",");
+    Serial.print(omega_ned_interp.y());
+    Serial.print(",");
+    Serial.print(omega_ned_interp.z());
+    Serial.print(",");
 
-    // Store results
-    gnssData_.velN = v_cg_ned.x();
-    gnssData_.velE = v_cg_ned.y();
-    gnssData_.velD = v_cg_ned.z();
+    Serial.print(r_ant_ned_interp.x());
+    Serial.print(",");
+    Serial.print(r_ant_ned_interp.y());
+    Serial.print(",");
+    Serial.print(r_ant_ned_interp.z());
+    Serial.print(",");
 
-    // Serial.print(millis());
-    // Serial.print(",");
-    // Serial.print(gnssData_.posN);
-    // Serial.print(",");
-    // Serial.print(gnssData_.posE);
-    // Serial.print(",");
-    // Serial.print(gnssData_.posD);
-    // Serial.print(",");
-    // Serial.print(gnssData_.velN);
-    // Serial.print(",");
-    // Serial.print(gnssData_.velE);
-    // Serial.print(",");
-    // Serial.print(gnssData_.velD);
-    // Serial.print(",");
-    // Serial.print(gnssData_.horAcc);
-    // Serial.print(",");
-    // Serial.print(gnssData_.vertAcc);
-    // Serial.print(",");
-    // Serial.print(gnssData_.numSV);
-    // Serial.print(",");
-    // Serial.print(gnssData_.fixType);
-    // Serial.print(",");
+    Serial.print(v_ant_ned.x());
+    Serial.print(",");
+    Serial.print(v_ant_ned.y());
+    Serial.print(",");
+    Serial.print(v_ant_ned.z());
+    Serial.print(",");
 
-    // Serial.print(omega_IMU.x());
-    // Serial.print(",");
-    // Serial.print(omega_IMU.y());
-    // Serial.print(",");
-    // Serial.print(omega_IMU.z());
-    // Serial.print(",");
+    Serial.print(v_cg_ned.x());
+    Serial.print(",");
+    Serial.print(v_cg_ned.y());
+    Serial.print(",");
+    Serial.println(v_cg_ned.z());
+}
 
-    // Serial.print(omega_cad.x());
-    // Serial.print(",");
-    // Serial.print(omega_cad.y());
-    // Serial.print(",");
-    // Serial.print(omega_cad.z());
-    // Serial.print(",");
+bool GNSS::interpolateIMUSample() {
+    if (imu_buf.size() < 2) return false;
 
-    // Serial.print(omega_ned.x());
-    // Serial.print(",");
-    // Serial.print(omega_ned.y());
-    // Serial.print(",");
-    // Serial.print(omega_ned.z());
-    // Serial.print(",");
+    // find two samples bracketing t_GNSS_read_us
+    size_t i = 0;  // Index of earlier sample
+    while (i + 1 < imu_buf.size() && imu_buf[i + 1].t_us < (t_GNSS_read_us)) {
+        ++i;
+    }
 
-    // Serial.print(r_ant_ned.x());
-    // Serial.print(",");
-    // Serial.print(r_ant_ned.y());
-    // Serial.print(",");
-    // Serial.print(r_ant_ned.z());
-    // Serial.print(",");
+    // Serial.println("1");
+    if (i + 1 >= imu_buf.size()) return false;  // requested time too new
 
-    // Serial.print(v_ant_ned.x());
-    // Serial.print(",");
-    // Serial.print(v_ant_ned.y());
-    // Serial.print(",");
-    // Serial.print(v_ant_ned.z());
-    // Serial.print(",");
+    const ImuSample& sampleBefore = imu_buf[i];
+    const ImuSample& sampleAfter = imu_buf[i + 1];
 
-    // Serial.print(v_cg_ned.x());
-    // Serial.print(",");
-    // Serial.print(v_cg_ned.y());
-    // Serial.print(",");
-    // Serial.print(v_cg_ned.z());
-    // Serial.print(",");
+    if (t_GNSS_read_us < sampleBefore.t_us || t_GNSS_read_us > sampleAfter.t_us) return false;
+    double dtAB = double(sampleAfter.t_us - sampleBefore.t_us);
 
-    // Serial.print(q_cad_to_imu.w());
-    // Serial.print(",");
-    // Serial.print(q_cad_to_imu.x());
-    // Serial.print(",");
-    // Serial.print(q_cad_to_imu.y());
-    // Serial.print(",");
-    // Serial.print(q_cad_to_imu.z());
-    // Serial.print(",");
+    // Serial.println("3");
+    if (dtAB <= 0.0) return false;
+    double alpha = double(t_GNSS_read_us - sampleBefore.t_us) / dtAB;
 
-    // Serial.print(q_cad_to_ned.w());
-    // Serial.print(",");
-    // Serial.print(q_cad_to_ned.x());
-    // Serial.print(",");
-    // Serial.print(q_cad_to_ned.y());
-    // Serial.print(",");
-    // Serial.println(q_cad_to_ned.z());
+    // linear interpolate omega_ned and r_ant_ned
+    omega_ned_interp = (1.0 - alpha) * sampleBefore.omega_ned + alpha * sampleAfter.omega_ned;
+    r_ant_ned_interp = (1.0 - alpha) * sampleBefore.r_ant_ned + alpha * sampleAfter.r_ant_ned;
+
+    return true;
 }

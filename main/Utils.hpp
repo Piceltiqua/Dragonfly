@@ -8,6 +8,7 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+#include <deque>
 
 static constexpr uint8_t STX = 0x7E;
 static constexpr uint8_t DLE = 0x7D;
@@ -23,6 +24,7 @@ static constexpr uint8_t MSG_ENG = 0x58;
 static constexpr uint8_t MSG_STOP = 0x60;
 static constexpr uint8_t MSG_LAND = 0x6B;
 static constexpr uint8_t MSG_REC = 0x8A;
+static constexpr uint8_t MSG_GIMBAL = 0xFA;
 
 static constexpr uint8_t LEGS_DEPLOYED = 0x9D;
 static constexpr uint8_t LEGS_RETRACTED = 0xA9;
@@ -32,76 +34,85 @@ static constexpr uint8_t CTRL_ATT_OFF_POS_OFF = 0xB7;
 static constexpr uint8_t CTRL_ATT_ON_POS_OFF = 0xC3;
 static constexpr uint8_t CTRL_ATT_ON_POS_ON = 0xCC;
 
-// Use some RAM to increase the size of the UART TX buffer, ensures that the telemetry isn't blocking
-static uint8_t extra_tx_mem[128]; // Default size of the buffer is 63 bytes, adding this leaves space (64+128) for the telemetry packets (which are around 122 bytes).
 
 // Fixed quaternion encoding the axis mapping between the CAD and the IMU
 const Eigen::Quaternionf q_cad_to_imu = Eigen::Quaternionf(-0.5, -0.5, 0.5, 0.5);  // w,x,y,z
 // Fixed quaternion that converts ENU to NED
 const Eigen::Quaternionf q_enu_to_ned = Eigen::Quaternionf(0, 0.7071068, 0.7071068, 0);  // w,x,y,z
+// Antenna offset in CAD frame
+const Eigen::Vector3f r_ant_cad = Eigen::Vector3f(0.0f, 0.0f, 0.475f);
 
 struct PosVel {
-  float posN = 0.0f;
-  float posE = 0.0f;
-  float posD = 0.0f;
-  float velN = 0.0f;
-  float velE = 0.0f;
-  float velD = 0.0f;
+    float posN = 0.0f;
+    float posE = 0.0f;
+    float posD = 0.0f;
+    float velN = 0.0f;
+    float velE = 0.0f;
+    float velD = 0.0f;
 };
 
 struct Attitude {
-  float qw = 1.0f;
-  float qi = 0.0f;
-  float qj = 0.0f;
-  float qk = 0.0f;
-  float wx = 0.0f;
-  float wy = 0.0f;
-  float wz = 0.0f;
+    float qw = 1.0f;
+    float qi = 0.0f;
+    float qj = 0.0f;
+    float qk = 0.0f;
+    float wx = 0.0f;
+    float wy = 0.0f;
+    float wz = 0.0f;
 };
 
 struct IMUAcceleration {
-  float ax_NED = 0.0f;
-  float ay_NED = 0.0f;
-  float az_NED = 0.0f;
-  uint8_t accuracy_status = 0;
+    float ax_NED = 0.0f;
+    float ay_NED = 0.0f;
+    float az_NED = 0.0f;
+    uint8_t accuracy_status = 0;
 };
 
 struct GNSSData {
-  double lat = 0.0f;
-  double lon = 0.0f;
-  float alt = 0.0f;
-  double lat0 = 0.0f;
-  double lon0 = 0.0f;
-  float alt0 = 0.0f;
-  float posN = 0.0f;
-  float posE = 0.0f;
-  float posD = 0.0f;
-  float velN = 0.0f;
-  float velE = 0.0f;
-  float velD = 0.0f;
-  float horAcc = 0.0f;
-  float vertAcc = 0.0f;
-  uint8_t numSV = 0;
-  uint8_t fixType = 0;
+    double lat = 0.0f;
+    double lon = 0.0f;
+    float alt = 0.0f;
+    double lat0 = 0.0f;
+    double lon0 = 0.0f;
+    float alt0 = 0.0f;
+    float posN = 0.0f;
+    float posE = 0.0f;
+    float posD = 0.0f;
+    float velN = 0.0f;
+    float velE = 0.0f;
+    float velD = 0.0f;
+    float horAcc = 0.0f;
+    float vertAcc = 0.0f;
+    uint8_t numSV = 0;
+    uint8_t fixType = 0;
 };
 
 struct BarometerData {
-  float altBaro = 0.0f;
+    float altBaro = 0.0f;
 };
 
 struct BatteryStatus {
-  uint16_t currentDraw = 0;
-  int16_t currentConsumed = 0;
-  uint16_t batteryVoltage = 0;
-  uint8_t batteryLevel = 0;
+    uint16_t currentDraw = 0;
+    int16_t currentConsumed = 0;
+    uint16_t batteryVoltage = 0;
+    uint8_t batteryLevel = 0;
 };
 
 struct ActuatorCommands {
-  int16_t motor1Throttle = 0;
-  int16_t motor2Throttle = 0;
-  uint8_t legsPosition = LEGS_DEPLOYED;  // 0xA9: retracted, 0x9D: deployed
-  int16_t servoXAngle = 0;
-  int16_t servoYAngle = 0;
+    int16_t motor1Throttle = 0;
+    int16_t motor2Throttle = 0;
+    uint8_t legsPosition = LEGS_DEPLOYED;  // 0xA9: retracted, 0x9D: deployed
+    int16_t servoXAngle = 0;
+    int16_t servoYAngle = 0;
 };
+
+struct ImuSample {
+    uint32_t t_us;
+    Eigen::Vector3f omega_ned;  // in NED frame (rad/s)
+    Eigen::Vector3f r_ant_ned;  // Projection of (0,0,0.475) from CAD to NED frame
+};
+
+inline ImuSample newImuSample{0, Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero()};
+inline std::deque<ImuSample> imu_buf;  // buffer to hold IMU samples for interpolation
 
 #endif

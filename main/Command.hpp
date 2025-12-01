@@ -9,7 +9,7 @@ class Command {
 public:
     Command() {}
     void setup();
-    void commandGimbal(int angleX, int angleY);
+    void commandGimbal(float angleX, float angleY);
     void commandMotors(int throttleMotor1, int throttleMotor2);
     void extendLegs();
     void retractLegs();

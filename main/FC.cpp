@@ -151,6 +151,16 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             }
             break;
 
+        case MSG_GIMBAL:
+            if (payloadLen >= 3) {
+                int8_t gimbalx = payload[1];
+                int8_t gimbaly = payload[2];
+                command.commandGimbal(gimbalx, gimbaly);
+                command.setLedColor(1, 1, 0);
+                // set motor throttles (percent)
+            }
+            break;
+
         default:
             Serial.print("Unknown command type ");
             Serial.println(header, HEX);

@@ -5,7 +5,7 @@
 
 #include "Utils.hpp"
 
-#define IMU_TIMEOUT 1000
+#define IMU_TIMEOUT 6000
 
 class IMU {
 public:
@@ -18,6 +18,7 @@ public:
     void imuEnuToCadNedQuat();
     void imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
                      float& ax_NED, float& ay_NED, float& az_NED);
+    void pushImuSample();
 
 private:
     Adafruit_BNO08x bno08x_{Serial4};

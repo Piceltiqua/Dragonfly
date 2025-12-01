@@ -20,7 +20,7 @@ void Command::setup() {
     motor2.writeMicroseconds(1100);
 }
 
-void Command::commandGimbal(int gimbalAngleX, int gimbalAngleY) {
+void Command::commandGimbal(float gimbalAngleX, float gimbalAngleY) {
     /*
         Commands the TVC servos at 250Hz such that the gimbal reaches the specified angles.
         THE ANGLES GIVEN ARE NOT THE SERVO ANGLES.
@@ -43,8 +43,17 @@ void Command::commandGimbal(int gimbalAngleX, int gimbalAngleY) {
     servoAngleGimbalX = -0.00529 * pow(gimbalAngleX, 3) + 0.0233 * pow(gimbalAngleX, 2) - 5.60 * gimbalAngleX + 1.37;
     servoAngleGimbalY = 0.0117 * pow(gimbalAngleY, 3) - 0.0274 * pow(gimbalAngleY, 2) + 5.28 * gimbalAngleY + 0.108;
 
-    gimbalX.writeMicroseconds(map(servoAngleGimbalX, -60.0f, 60.0f, 900, 2100));
-    gimbalY.writeMicroseconds(map(servoAngleGimbalY, -60.0f, 60.0f, 900, 2100));
+    uint16_t timingX = map(servoAngleGimbalX, -60.0f, 60.0f, 900, 2100);
+    uint16_t timingY = map(servoAngleGimbalY, -60.0f, 60.0f, 900, 2100);
+
+    gimbalX.writeMicroseconds(timingX);
+    gimbalY.writeMicroseconds(timingY);
+
+    Serial.print("Commanded servo X with ");
+    Serial.print(timingX);
+    Serial.print("us and servo Y with ");
+    Serial.print(timingY);
+    Serial.println("us");
 }
 
 void Command::commandMotors(int throttleMotor1, int throttleMotor2) {
