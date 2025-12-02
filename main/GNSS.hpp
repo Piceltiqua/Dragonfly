@@ -32,8 +32,6 @@ private:
 
     double N0 = 0.0;
     double M0 = 0.0;
-    double N0 = 0.0;
-    double M0 = 0.0;
 
     bool newReading = false;
     bool reference_ = false;

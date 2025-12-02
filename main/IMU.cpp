@@ -89,7 +89,6 @@ void IMU::imuEnuToCadNedQuat() {
 
 void IMU::imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
                       float& ax_NED, float& ay_NED, float& az_NED) {
-                      float& ax_NED, float& ay_NED, float& az_NED) {
                           // Converts the acceleration from the IMU frame to the NED frame, to express the acceleration in world frame (NED)
 
                           // Acceleration vector in the frame of the IMU

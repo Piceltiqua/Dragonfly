@@ -502,7 +502,6 @@ void FlightController::sendTelemetry() {
 
 void FlightController::sd_write() {
     // Section 1 - POSVEL
-    t_before_posvel = micros();
     dataFile.print(micros());
     dataFile.print(",");
     dataFile.print(posvel.posN);
@@ -516,10 +515,8 @@ void FlightController::sd_write() {
     dataFile.print(posvel.velE);
     dataFile.print(",");
     dataFile.print(posvel.velD);
-    t_after_posvel = micros();
 
     // Section 2 - ATTITUDE
-    t_before_attitude = micros();
     dataFile.print(attitude.qw);
     dataFile.print(",");
     dataFile.print(attitude.qi);
@@ -533,20 +530,16 @@ void FlightController::sd_write() {
     dataFile.print(attitude.wy);
     dataFile.print(",");
     dataFile.print(attitude.wz);
-    t_after_attitude = micros();
 
     // Section 3 - IMU
-    t_before_imu = micros();
     dataFile.print(imuAcc.ax_NED);
     dataFile.print(",");
     dataFile.print(imuAcc.ay_NED);
     dataFile.print(",");
     dataFile.print(imuAcc.az_NED);
     dataFile.print(",");
-    t_after_imu = micros();
 
     // Section 4 - GNSS (and final newline)
-    t_before_gnss = micros();
     dataFile.print(gnssData.lat);
     dataFile.print(",");
     dataFile.print(gnssData.lon);
@@ -572,5 +565,4 @@ void FlightController::sd_write() {
     dataFile.print(gnssData.numSV);
     dataFile.print(",");
     dataFile.println(gnssData.fixType);
-    t_after_gnss = micros();
 }
