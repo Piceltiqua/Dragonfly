@@ -24,14 +24,14 @@ void IMU::read() {
                     float ay_IMU = sensorValue.un.linearAcceleration.y;
                     float az_IMU = sensorValue.un.linearAcceleration.z;
                     acc = true;
-                    
+
                     Serial.print("Raw acc:\t");
                     Serial.print(ax_IMU);
                     Serial.print("\t");
                     Serial.print(ay_IMU);
                     Serial.print("\t");
                     Serial.println(az_IMU);
-                    
+
                     imuAccToNED(ax_IMU, ay_IMU, az_IMU, imuAcc_.ax_NED, imuAcc_.ay_NED, imuAcc_.az_NED);
 
                     Serial.print("Acceleration in NED:\t");
@@ -112,7 +112,7 @@ void IMU::imuEnuToCadNedQuat() {
 }
 
 void IMU::imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
-                      float& ax_NED, float& ay_NED, float& az_NED){
+                      float& ax_NED, float& ay_NED, float& az_NED) {
     // Converts the acceleration from the IMU frame to the NED frame, to express the acceleration in world frame (NED)
 
     // Acceleration vector in the frame of the IMU

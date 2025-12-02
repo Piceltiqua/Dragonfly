@@ -18,6 +18,15 @@ void FlightController::setup() {
     ukf.setup();
     battery.setup();
 
+    // Initialize SD card (needed before attempting to open files)
+    if (!SD.begin(SD_CS_PIN)) {
+        Serial.println("SD.begin() failed - SD card not found");
+        sd_ok = false;
+    } else {
+        Serial.println("SD initialized successfully");
+        sd_ok = true;
+    }
+
     // Serial.begin(115200);
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
     delay(1000);
@@ -25,17 +34,9 @@ void FlightController::setup() {
 
 void FlightController::readSensors() {
     while (Serial1.available()) {
-#ifdef USE_TIMERS
-        unsigned long t0_telemReceive = micros();
-#endif
-
         int b = Serial1.read();
-        if (b >= 0) processIncomingByte((uint8_t)b);
-
-#ifdef USE_TIMERS
-        Serial.print("Telem receive time (us): ");
-        Serial.println(micros() - t0_telemReceive);
-#endif
+        if (b >= 0)
+            processIncomingByte((uint8_t)b);
     }
 
     // Attitude loop
@@ -43,49 +44,24 @@ void FlightController::readSensors() {
         // Receive commands
         IMUTimer -= IMU_PERIOD_US;
 
-#ifdef USE_TIMERS
-        unsigned long t0_imuRead = micros();
-#endif
-
         imu.read();
 
-#ifdef USE_TIMERS
-        Serial.print("IMU read time (us): ");
-        Serial.println(micros() - t0_imuRead);
-#endif
         battery.readVoltage();
         battery.readCurrent();
         battery.integrateCurrentDraw();
 
         if (gnss.read()) {
             if (gnssData.fixType == 6) {
-#ifdef USE_TIMERS
-                unsigned long t0_gnssUpdate = micros();
-#endif
-
                 ukf.updateGNSS();
-
-#ifdef USE_TIMERS
-                Serial.print("GNSS update time (us): ");
-                Serial.println(micros() - t0_gnssUpdate);
-#endif
             }
         }
         if (gnssData.fixType == 6) {
-#ifdef USE_TIMERS
-            unsigned long t0_predictStep = micros();
-#endif
-
             ukf.predict(1.0f / IMU_FREQ_HZ);
 
-#ifdef USE_TIMERS
-            Serial.print("Predict step time (us): ");
-            Serial.println(micros() - t0_predictStep);
-#endif
+            if (isRecording) {
+                sd_write();
+            }
         }
-#ifndef USE_TIMERS
-        // printState();
-#endif
         // Update battery level
     }
 
@@ -93,16 +69,7 @@ void FlightController::readSensors() {
     if (telemTimer >= TELEMETRY_PERIOD_US) {
         telemTimer -= TELEMETRY_PERIOD_US;
 
-#ifdef USE_TIMERS
-        unsigned long t0_telemetrySend = micros();
-#endif
-
         sendTelemetry();
-
-#ifdef USE_TIMERS
-        Serial.print("Telem send time (us): ");
-        Serial.println(micros() - t0_telemetrySend);
-#endif
     }
 }
 
@@ -184,17 +151,30 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
         case MSG_REC:
             if (payloadLen >= 2) {
                 uint8_t rec = payload[1];
-                if (rec == 0xE6) {  // start rec
-                    if (!isRecording) {
+                if (rec == 0xE6) {
+                    if (!isRecording) {  // start sd logging
                         isRecording = true;
-                        // start sd logging
+                        if (!sd_initialized) {
+                            if (gnssData.fixType >= 3) {
+                                filename = gnss.getDate();
+
+                                dataFile = SD.open(filename.c_str(), FILE_WRITE);
+                                sd_initialized = true;
+                            } else {
+                                isRecording = false;
+                            }
+                        }
                     }
                 } else if (rec == 0xF1) {  // stop rec
                     if (isRecording) {
                         isRecording = false;
+
+                        dataFile.close();
                         // stop sd logging
                     }
                 }
+            } else if (!sd_ok) {
+                Serial.println("SD card not OK; cannot process REC command");
             }
             break;
 
@@ -510,4 +490,79 @@ void FlightController::sendTelemetry() {
 
     // send framed
     trySendPayloadWithCrc(payloadWithCrc, payloadNoCrcLen);
+}
+
+void FlightController::sd_write() {
+    // Section 1 - POSVEL
+    t_before_posvel = micros();
+    dataFile.print(micros());
+    dataFile.print(",");
+    dataFile.print(posvel.posN);
+    dataFile.print(",");
+    dataFile.print(posvel.posE);
+    dataFile.print(",");
+    dataFile.print(posvel.posD);
+    dataFile.print(",");
+    dataFile.print(posvel.velN);
+    dataFile.print(",");
+    dataFile.print(posvel.velE);
+    dataFile.print(",");
+    dataFile.print(posvel.velD);
+    t_after_posvel = micros();
+
+    // Section 2 - ATTITUDE
+    t_before_attitude = micros();
+    dataFile.print(attitude.qw);
+    dataFile.print(",");
+    dataFile.print(attitude.qi);
+    dataFile.print(",");
+    dataFile.print(attitude.qj);
+    dataFile.print(",");
+    dataFile.print(attitude.qk);
+    dataFile.print(",");
+    dataFile.print(attitude.wx);
+    dataFile.print(",");
+    dataFile.print(attitude.wy);
+    dataFile.print(",");
+    dataFile.print(attitude.wz);
+    t_after_attitude = micros();
+
+    // Section 3 - IMU
+    t_before_imu = micros();
+    dataFile.print(imuAcc.ax_NED);
+    dataFile.print(",");
+    dataFile.print(imuAcc.ay_NED);
+    dataFile.print(",");
+    dataFile.print(imuAcc.az_NED);
+    dataFile.print(",");
+    t_after_imu = micros();
+
+    // Section 4 - GNSS (and final newline)
+    t_before_gnss = micros();
+    dataFile.print(gnssData.lat);
+    dataFile.print(",");
+    dataFile.print(gnssData.lon);
+    dataFile.print(",");
+    dataFile.print(gnssData.alt);
+    dataFile.print(",");
+    dataFile.print(gnssData.posN);
+    dataFile.print(",");
+    dataFile.print(gnssData.posE);
+    dataFile.print(",");
+    dataFile.print(gnssData.posD);
+    dataFile.print(",");
+    dataFile.print(gnssData.velN);
+    dataFile.print(",");
+    dataFile.print(gnssData.velE);
+    dataFile.print(",");
+    dataFile.print(gnssData.velD);
+    dataFile.print(",");
+    dataFile.print(gnssData.horAcc);
+    dataFile.print(",");
+    dataFile.print(gnssData.vertAcc);
+    dataFile.print(",");
+    dataFile.print(gnssData.numSV);
+    dataFile.print(",");
+    dataFile.println(gnssData.fixType);
+    t_after_gnss = micros();
 }

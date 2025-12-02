@@ -1,12 +1,16 @@
 #ifndef FC_H
 #define FC_H
 
+#include <SD.h>
+#include <SPI.h>
+
+#include "Battery.hpp"
 #include "Command.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
 #include "UKF.hpp"
 #include "Utils.hpp"
-#include "Battery.hpp"
+
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
 
@@ -17,6 +21,7 @@
 #define TELEMETRY_PERIOD_US (1000000.0 / TELEMETRY_FREQ_HZ)
 
 #define MAX_FRAME_BUFFER 2048
+#define SD_CS_PIN BUILTIN_SDCARD
 
 enum class FCState {
     NoFix,
@@ -76,6 +81,14 @@ private:
     void executeCommandFromPayload(const uint8_t* payload, size_t payloadLen);
     void processCompleteUnescapedFrame(const uint8_t* buf, size_t len);
     bool trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen);
+
+    // SD write functions
+    void sd_write();
+    File dataFile;
+    unsigned long write_start = 0;
+    bool sd_initialized = false;
+    bool sd_ok = false;
+    String filename;
 };
 
 #endif
