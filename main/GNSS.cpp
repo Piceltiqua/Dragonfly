@@ -5,6 +5,8 @@ bfs::Ubx ubx(&Serial5);
 void GNSS::setup() {
     Serial5.begin(115200);
     ubx.Begin(115200);
+    Serial5.begin(115200);
+    ubx.Begin(115200);
 }
 
 bool GNSS::read() {
@@ -162,4 +164,9 @@ bool GNSS::interpolateIMUSample() {
     r_ant_ned_interp = (1.0 - alpha) * sampleBefore.r_ant_ned + alpha * sampleAfter.r_ant_ned;
 
     return true;
+}
+
+String GNSS::getDate() {
+    String filename = String(ubx.utc_year()) + String("_") + String(ubx.utc_month()) + String("_") + String(ubx.utc_day()) + String("_") + String(ubx.utc_hour()) + String("-") + String(ubx.utc_min()) + String("-") + String(ubx.utc_sec()) + String(".txt");
+    return filename;
 }

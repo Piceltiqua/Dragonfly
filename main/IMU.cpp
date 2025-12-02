@@ -89,40 +89,41 @@ void IMU::imuEnuToCadNedQuat() {
 
 void IMU::imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
                       float& ax_NED, float& ay_NED, float& az_NED) {
-    // Converts the acceleration from the IMU frame to the NED frame, to express the acceleration in world frame (NED)
+                      float& ax_NED, float& ay_NED, float& az_NED) {
+                          // Converts the acceleration from the IMU frame to the NED frame, to express the acceleration in world frame (NED)
 
-    // Acceleration vector in the frame of the IMU
-    Eigen::Vector3f acc_imu(ax_IMU, ay_IMU, az_IMU);
+                          // Acceleration vector in the frame of the IMU
+                          Eigen::Vector3f acc_imu(ax_IMU, ay_IMU, az_IMU);
 
-    // Acceleration vector in the CAD frame, computed from the fixed quaternion that maps CAD to IMU.
-    Eigen::Vector3f acc_cad = q_cad_to_imu.inverse() * acc_imu;
+                          // Acceleration vector in the CAD frame, computed from the fixed quaternion that maps CAD to IMU.
+                          Eigen::Vector3f acc_cad = q_cad_to_imu.inverse() * acc_imu;
 
-    // Rotate to from CAD frame to NED using quaternion-vector multiplication
-    Eigen::Vector3f acc_ned = q_cad_to_ned * acc_cad;
+                          // Rotate to from CAD frame to NED using quaternion-vector multiplication
+                          Eigen::Vector3f acc_ned = q_cad_to_ned * acc_cad;
 
-    ax_NED = acc_ned.x();
-    ay_NED = acc_ned.y();
-    az_NED = acc_ned.z();
-}
+                          ax_NED = acc_ned.x();
+                          ay_NED = acc_ned.y();
+                          az_NED = acc_ned.z();
+                      }
 
-void IMU::pushImuSample() {
-    // Push the latest IMU sample into the buffer for interpolation use in GNSS velocity correction
+                      void IMU::pushImuSample() {
+                          // Push the latest IMU sample into the buffer for interpolation use in GNSS velocity correction
 
-    // IMU angular rates in IMU frame
-    Eigen::Vector3f omega_IMU(attitude_.wx, attitude_.wy, attitude_.wz);
+                          // IMU angular rates in IMU frame
+                          Eigen::Vector3f omega_IMU(attitude_.wx, attitude_.wy, attitude_.wz);
 
-    // Angular rates in CAD frame
-    Eigen::Vector3f omega_cad = q_cad_to_imu.conjugate() * omega_IMU;
+                          // Angular rates in CAD frame
+                          Eigen::Vector3f omega_cad = q_cad_to_imu.conjugate() * omega_IMU;
 
-    // Angular rates in NED frame
-    newImuSample.omega_ned = q_cad_to_ned * omega_cad;
+                          // Angular rates in NED frame
+                          newImuSample.omega_ned = q_cad_to_ned * omega_cad;
 
-    // Antenna position in NED frame
-    newImuSample.r_ant_ned = q_cad_to_ned * r_ant_cad;
+                          // Antenna position in NED frame
+                          newImuSample.r_ant_ned = q_cad_to_ned * r_ant_cad;
 
-    newImuSample.t_us = micros();
+                          newImuSample.t_us = micros();
 
-    imu_buf.push_back(newImuSample);
+                          imu_buf.push_back(newImuSample);
 
-    while (imu_buf.size() > 1000) imu_buf.pop_front();  // Keep memory usage bounded
-}
+                          while (imu_buf.size() > 1000) imu_buf.pop_front();  // Keep memory usage bounded
+                      }

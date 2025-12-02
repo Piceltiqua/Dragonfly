@@ -1,12 +1,16 @@
 #ifndef FC_H
 #define FC_H
 
+#include <SD.h>
+#include <SPI.h>
+
+#include "Battery.hpp"
 #include "Command.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
 #include "EKF.hpp"
 #include "Utils.hpp"
-#include "Battery.hpp"
+
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
 
@@ -17,6 +21,7 @@
 #define TELEMETRY_PERIOD_US (1000000.0 / TELEMETRY_FREQ_HZ)
 
 #define MAX_FRAME_BUFFER 2048
+#define SD_CS_PIN BUILTIN_SDCARD
 
 // Use some RAM to increase the size of the UART TX buffer, ensures that the telemetry isn't blocking
 inline uint8_t extra_tx_mem[128];  // Default size of the buffer is 63 bytes, adding this leaves space (64+128) for the telemetry packets (which are around 122 bytes).
@@ -79,6 +84,14 @@ private:
     void executeCommandFromPayload(const uint8_t* payload, size_t payloadLen);
     void processCompleteUnescapedFrame(const uint8_t* buf, size_t len);
     bool trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen);
+
+    // SD write functions
+    void sd_write();
+    File dataFile;
+    unsigned long write_start = 0;
+    bool sd_initialized = false;
+    bool sd_ok = false;
+    String filename;
 };
 
 #endif

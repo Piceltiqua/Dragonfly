@@ -16,6 +16,7 @@ public:
 
     void setup();
     bool read();
+    String getDate();
     void setReference(double lat0, double lon0, double alt0);
 
 private:
@@ -29,6 +30,8 @@ private:
     void computeCGVelocityNED();
     bool interpolateIMUSample();
 
+    double N0 = 0.0;
+    double M0 = 0.0;
     double N0 = 0.0;
     double M0 = 0.0;
 
