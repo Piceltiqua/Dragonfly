@@ -6,9 +6,9 @@
 
 #include "Battery.hpp"
 #include "Command.hpp"
+#include "EKF.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
-#include "EKF.hpp"
 #include "Utils.hpp"
 
 // #include "AttitudeController.hpp"
@@ -21,8 +21,6 @@
 #define TELEMETRY_PERIOD_US (1000000.0 / TELEMETRY_FREQ_HZ)
 
 #define MAX_FRAME_BUFFER 2048
-#define SD_CS_PIN BUILTIN_SDCARD
-
 // Use some RAM to increase the size of the UART TX buffer, ensures that the telemetry isn't blocking
 inline uint8_t extra_tx_mem[128];  // Default size of the buffer is 63 bytes, adding this leaves space (64+128) for the telemetry packets (which are around 122 bytes).
 
@@ -45,7 +43,6 @@ public:
 
 private:
     void printState();
-    // void printSensors();
 
     PosVel posvel;
     Attitude attitude;
@@ -86,12 +83,15 @@ private:
     bool trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size_t payloadLen);
 
     // SD write functions
-    void sd_write();
-    File dataFile;
+    void handleRecordingMessage(uint8_t rec);
+    void initializeSD();
+    void writeHeader();
+    void writeToSD();
+    FsFile dataFile;
     unsigned long write_start = 0;
-    bool sd_initialized = false;
-    bool sd_ok = false;
+    bool sdInitialized = false;
     String filename;
+    uint32_t tPreviousFlush = 0;
 };
 
 #endif

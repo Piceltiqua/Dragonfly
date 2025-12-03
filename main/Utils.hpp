@@ -34,7 +34,6 @@ static constexpr uint8_t CTRL_ATT_OFF_POS_OFF = 0xB7;
 static constexpr uint8_t CTRL_ATT_ON_POS_OFF = 0xC3;
 static constexpr uint8_t CTRL_ATT_ON_POS_ON = 0xCC;
 
-
 // Fixed quaternion encoding the axis mapping between the CAD and the IMU
 const Eigen::Quaternionf q_cad_to_imu = Eigen::Quaternionf(-0.5, -0.5, 0.5, 0.5);  // w,x,y,z
 // Fixed quaternion that converts ENU to NED

@@ -16,7 +16,7 @@ public:
 
     void setup();
     bool read();
-    String getDate();
+    String getDateFilename();
     void setReference(double lat0, double lon0, double alt0);
 
 private:

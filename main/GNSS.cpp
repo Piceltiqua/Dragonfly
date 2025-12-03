@@ -84,57 +84,57 @@ void GNSS::computeCGVelocityNED() {
     gnssData_.velE = alpha * v_cg_ned.y() + (1 - alpha) * gnssData_.velE;
     gnssData_.velD = alpha * v_cg_ned.z() + (1 - alpha) * gnssData_.velD;
 
-    Serial.print(millis());
-    Serial.print(",");
-    Serial.print(gnssData_.posN);
-    Serial.print(",");
-    Serial.print(gnssData_.posE);
-    Serial.print(",");
-    Serial.print(gnssData_.posD);
-    Serial.print(",");
+    // Serial.print(millis());
+    // Serial.print(",");
+    // Serial.print(gnssData_.posN);
+    // Serial.print(",");
+    // Serial.print(gnssData_.posE);
+    // Serial.print(",");
+    // Serial.print(gnssData_.posD);
+    // Serial.print(",");
 
-    Serial.print(gnssData_.velN);
-    Serial.print(",");
-    Serial.print(gnssData_.velE);
-    Serial.print(",");
-    Serial.print(gnssData_.velD);
-    Serial.print(",");
+    // Serial.print(gnssData_.velN);
+    // Serial.print(",");
+    // Serial.print(gnssData_.velE);
+    // Serial.print(",");
+    // Serial.print(gnssData_.velD);
+    // Serial.print(",");
 
-    Serial.print(gnssData_.horAcc);
-    Serial.print(",");
-    Serial.print(gnssData_.vertAcc);
-    Serial.print(",");
-    Serial.print(gnssData_.numSV);
-    Serial.print(",");
-    Serial.print(gnssData_.fixType);
-    Serial.print(",");
+    // Serial.print(gnssData_.horAcc);
+    // Serial.print(",");
+    // Serial.print(gnssData_.vertAcc);
+    // Serial.print(",");
+    // Serial.print(gnssData_.numSV);
+    // Serial.print(",");
+    // Serial.print(gnssData_.fixType);
+    // Serial.print(",");
 
-    Serial.print(omega_ned_interp.x());
-    Serial.print(",");
-    Serial.print(omega_ned_interp.y());
-    Serial.print(",");
-    Serial.print(omega_ned_interp.z());
-    Serial.print(",");
+    // Serial.print(omega_ned_interp.x());
+    // Serial.print(",");
+    // Serial.print(omega_ned_interp.y());
+    // Serial.print(",");
+    // Serial.print(omega_ned_interp.z());
+    // Serial.print(",");
 
-    Serial.print(r_ant_ned_interp.x());
-    Serial.print(",");
-    Serial.print(r_ant_ned_interp.y());
-    Serial.print(",");
-    Serial.print(r_ant_ned_interp.z());
-    Serial.print(",");
+    // Serial.print(r_ant_ned_interp.x());
+    // Serial.print(",");
+    // Serial.print(r_ant_ned_interp.y());
+    // Serial.print(",");
+    // Serial.print(r_ant_ned_interp.z());
+    // Serial.print(",");
 
-    Serial.print(v_ant_ned.x());
-    Serial.print(",");
-    Serial.print(v_ant_ned.y());
-    Serial.print(",");
-    Serial.print(v_ant_ned.z());
-    Serial.print(",");
+    // Serial.print(v_ant_ned.x());
+    // Serial.print(",");
+    // Serial.print(v_ant_ned.y());
+    // Serial.print(",");
+    // Serial.print(v_ant_ned.z());
+    // Serial.print(",");
 
-    Serial.print(v_cg_ned.x());
-    Serial.print(",");
-    Serial.print(v_cg_ned.y());
-    Serial.print(",");
-    Serial.println(v_cg_ned.z());
+    // Serial.print(v_cg_ned.x());
+    // Serial.print(",");
+    // Serial.print(v_cg_ned.y());
+    // Serial.print(",");
+    // Serial.println(v_cg_ned.z());
 }
 
 bool GNSS::interpolateIMUSample() {
@@ -166,7 +166,7 @@ bool GNSS::interpolateIMUSample() {
     return true;
 }
 
-String GNSS::getDate() {
+String GNSS::getDateFilename() {
     String filename = String(ubx.utc_year()) + String("_") + String(ubx.utc_month()) + String("_") + String(ubx.utc_day()) + String("_") + String(ubx.utc_hour()) + String("-") + String(ubx.utc_min()) + String("-") + String(ubx.utc_sec()) + String(".txt");
     return filename;
 }

@@ -11,19 +11,17 @@ FlightController::FlightController()
 
 void FlightController::setup() {
     imu.setup(IMU_FREQ_HZ);
+    delay(100);
     gnss.setup();
+    delay(100);
     command.setup();
+    delay(100);
     ekf.setup();
+    delay(100);
     battery.setup();
-
-    // Initialize SD card (needed before attempting to open files)
-    if (!SD.begin(SD_CS_PIN)) {
-        Serial.println("SD.begin() failed - SD card not found");
-        sd_ok = false;
-    } else {
-        Serial.println("SD initialized successfully");
-        sd_ok = true;
-    }
+    delay(100);
+    initializeSD();
+    delay(100);
 
     // Serial.begin(115200);
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
@@ -53,12 +51,16 @@ void FlightController::readSensors() {
                 ekf.updateGNSS();
             }
         }
+
+        if (isRecording && SD.mediaPresent()) {
+            writeToSD();
+        } else if (!SD.mediaPresent()) {
+            isRecording = false;    // stop recording if SD removed
+            sdInitialized = false;  // force re-init on next start
+        }
+
         if (gnssData.fixType == 6) {
             ekf.predict(1.0f / IMU_FREQ_HZ);
-
-            if (isRecording) {
-                sd_write();
-            }
         }
         // Update battery level
     }
@@ -72,9 +74,11 @@ void FlightController::readSensors() {
 }
 
 void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
-    // payload[0] = message_type
     if (payloadLen < 1) return;
+
+    // payload[0] = message_type
     uint8_t header = payload[0];
+
     // commands mapping:
     switch (header) {
         case MSG_FLY:
@@ -82,7 +86,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             // implement your flight start logic here
             // NOTE: we already echoed the frame back before executing
             command.setLedColor(0, 0, 0);
-            //
             break;
 
         case MSG_LEG: {
@@ -106,7 +109,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 uint16_t charge_mah = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
                 battery.setCharge(charge_mah);
                 command.setLedColor(0, 1, 0);
-                // store/handle accordingly
             }
 
             break;
@@ -129,11 +131,10 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_ENG:
             if (payloadLen >= 3) {
-                uint8_t m1 = payload[1];
+                uint8_t m1 = payload[1];  // throttle (%)
                 uint8_t m2 = payload[2];
                 command.commandMotors(m1, m2);
                 command.setLedColor(1, 1, 0);
-                // set motor throttles (percent)
             }
             break;
 
@@ -149,38 +150,16 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
         case MSG_REC:
             if (payloadLen >= 2) {
                 uint8_t rec = payload[1];
-                if (rec == 0xE6) {
-                    if (!isRecording) {  // start sd logging
-                        isRecording = true;
-                        if (!sd_initialized) {
-                            if (gnssData.fixType >= 3) {
-                                filename = gnss.getDate();
-
-                                dataFile = SD.open(filename.c_str(), FILE_WRITE);
-                                sd_initialized = true;
-                            } else {
-                                isRecording = false;
-                            }
-                        }
-                    }
-                } else if (rec == 0xF1) {  // stop rec
-                    if (isRecording) {
-                        isRecording = false;
-
-                        dataFile.close();
-                        // stop sd logging
-                    }
-                }
+                handleRecordingMessage(rec);
             }
             break;
 
         case MSG_GIMBAL:
             if (payloadLen >= 3) {
-                int8_t gimbalx = payload[1];
-                int8_t gimbaly = payload[2];
-                command.commandGimbal(gimbalx, gimbaly);
+                int8_t gimbalX = payload[1];  // gimbal angle in degrees (-6/+6)
+                int8_t gimbalY = payload[2];
+                command.commandGimbal(gimbalX, gimbalY);
                 command.setLedColor(1, 1, 0);
-                // set motor throttles (percent)
             }
             break;
 
@@ -367,6 +346,9 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     memcpy(p, &actuators.servoYAngle, sizeof(actuators.servoYAngle));
     p += sizeof(actuators.servoYAngle);
 
+    memcpy(p, &isRecording, sizeof(isRecording));
+    p += sizeof(isRecording);
+
     outLen = p - buf;
 }
 
@@ -500,69 +482,143 @@ void FlightController::sendTelemetry() {
     trySendPayloadWithCrc(payloadWithCrc, payloadNoCrcLen);
 }
 
-void FlightController::sd_write() {
-    // Section 1 - POSVEL
-    dataFile.print(micros());
-    dataFile.print(",");
-    dataFile.print(posvel.posN);
-    dataFile.print(",");
-    dataFile.print(posvel.posE);
-    dataFile.print(",");
-    dataFile.print(posvel.posD);
-    dataFile.print(",");
-    dataFile.print(posvel.velN);
-    dataFile.print(",");
-    dataFile.print(posvel.velE);
-    dataFile.print(",");
-    dataFile.print(posvel.velD);
+void FlightController::handleRecordingMessage(uint8_t rec) {
+    // Command to start recording
+    if (rec == 0xE6) {
+        // If we are not already recording
+        if (!isRecording) {
+            // If SD not initialized, try to initialize it
+            if (!sdInitialized) {
+                initializeSD();
+            }
 
-    // Section 2 - ATTITUDE
-    dataFile.print(attitude.qw);
-    dataFile.print(",");
-    dataFile.print(attitude.qi);
-    dataFile.print(",");
-    dataFile.print(attitude.qj);
-    dataFile.print(",");
-    dataFile.print(attitude.qk);
-    dataFile.print(",");
-    dataFile.print(attitude.wx);
-    dataFile.print(",");
-    dataFile.print(attitude.wy);
-    dataFile.print(",");
-    dataFile.print(attitude.wz);
+            // If SD initialized and GNSS has a good fix, open file
+            if (sdInitialized && gnssData.fixType >= 5) {
+                filename = gnss.getDateFilename();
+                dataFile = SD.sdfs.open(filename.c_str(), O_WRITE | O_CREAT);
+                if (dataFile.preAllocate(2 * 1024 * 1024)) {
+                    Serial.print("Allocated 2 MB for ");
+                    Serial.println(filename);
+                } else {
+                    Serial.println("Unable to preallocate this file");
+                }
+                writeHeader();
+                isRecording = true;
 
-    // Section 3 - IMU
-    dataFile.print(imuAcc.ax_NED);
-    dataFile.print(",");
-    dataFile.print(imuAcc.ay_NED);
-    dataFile.print(",");
-    dataFile.print(imuAcc.az_NED);
-    dataFile.print(",");
+                Serial.print("Opened file with name: ");
+                Serial.println(filename);
+            } else {
+                isRecording = false;
+            }
+        }
+    }
 
-    // Section 4 - GNSS (and final newline)
-    dataFile.print(gnssData.lat);
-    dataFile.print(",");
-    dataFile.print(gnssData.lon);
-    dataFile.print(",");
-    dataFile.print(gnssData.alt);
-    dataFile.print(",");
-    dataFile.print(gnssData.posN);
-    dataFile.print(",");
-    dataFile.print(gnssData.posE);
-    dataFile.print(",");
-    dataFile.print(gnssData.posD);
-    dataFile.print(",");
-    dataFile.print(gnssData.velN);
-    dataFile.print(",");
-    dataFile.print(gnssData.velE);
-    dataFile.print(",");
-    dataFile.print(gnssData.velD);
-    dataFile.print(",");
-    dataFile.print(gnssData.horAcc);
-    dataFile.print(",");
-    dataFile.print(gnssData.vertAcc);
-    dataFile.print(",");
-    dataFile.print(gnssData.numSV);
-    dataFile.print(",");
-    dataFile.println(gnssData.fixType);
+    // Command to stop recording
+    else if (rec == 0xF1) {  // stop rec
+        if (isRecording) {
+            isRecording = false;
+            dataFile.close();
+            Serial.println("Closed file.");
+            // stop sd logging
+        }
+    }
+}
+
+void FlightController::initializeSD() {
+    // Initialize SD card (needed before attempting to open files)
+    if (!SD.sdfs.begin(SdioConfig(DMA_SDIO)))  // Use SDFat library with DMA, alternative is SD.sdfs.begin(SdioConfig(FIFO_SDIO))
+    {
+        Serial.println("SD.sdfs.begin() failed - SD card not found");
+        sdInitialized = false;
+    } else {
+        Serial.println("SD initialized successfully");
+        sdInitialized = true;
+    }
+}
+
+void FlightController::writeHeader() {
+    dataFile.println(
+        "time_us,posN_m,posE_m,posD_m,velN_m/s,velE_m/s,velD_m/s,"
+        "Qw,Qx,Qy,Qz,Wx_rad/s,Wy_rad/s,Wz_rad/s,"
+        "accN_m/s2,accE_m/s2,accD_m/s2,"
+        "GNSS_lat_deg,GNSS_lon_deg,GNSS_alt_m,"
+        "GNSS_posN_m,GNSS_posE_m,GNSS_posD_m,"
+        "GNSS_velN_m/s,GNSS_velE_m/s,GNSS_velD_m/s,"
+        "GNSS_HorAcc_m,GNSS_VertAcc_m,numSV,FixType,"
+        "CurrentDraw_mA,CurrentConsumed_mAh,BatteryVoltage_V,BatteryLevel_percent,"
+        "Motor1Throttle_percent,Motor2Throttle_percent,"
+        "LegsPosition_servo,GimbalX_deg,GimbalY_deg");
+    dataFile.flush();
+}
+
+void FlightController::writeToSD() {
+    if (!isRecording || !sdInitialized) return;
+
+    char line[512];
+    int len = snprintf(line, sizeof(line),
+                       "%lu,"                                 // micros
+                       "%.4f,%.4f,%.4f,"                      // posN,posE,posD
+                       "%.4f,%.4f,%.4f,"                      // velN,velE,velD
+                       "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,"  // qw,qi,qj,qk,wx,wy,wz (7 floats)
+                       "%.6f,%.6f,%.6f,"                      // imu ax,ay,az
+                       "%.12f,%.12f,%.4f,"                    // GNSS lat(double), lon(double), alt(float)
+                       "%.4f,%.4f,%.4f,"                      // GNSS posN,posE,posD
+                       "%.4f,%.4f,%.4f,"                      // GNSS velN,velE,velD
+                       "%.4f,%.4f,"                           // GNSS horAcc, vertAcc
+                       "%u,%u,"                               // numSV (uint8_t), fixType (uint8_t)
+                       "%u,%d,%u,%u,"                         // battery currentDraw(uint16_t), currentConsumed(int16_t), batteryVoltage(uint16_t), batteryLevel(uint8_t)
+                       "%d,%d,%u,%d,%d\n",                    // actuators motor1Throttle(int16_t), motor2Throttle(int16_t), legsPosition(uint8_t), servoXAngle(int16_t), servoYAngle(int16_t)
+                       (unsigned long)micros(),
+                       posvel.posN, posvel.posE, posvel.posD,
+                       posvel.velN, posvel.velE, posvel.velD,
+                       attitude.qw, attitude.qi, attitude.qj, attitude.qk,
+                       attitude.wx, attitude.wy, attitude.wz,
+                       imuAcc.ax_NED, imuAcc.ay_NED, imuAcc.az_NED,
+                       gnssData.lat, gnssData.lon, gnssData.alt,
+                       gnssData.posN, gnssData.posE, gnssData.posD,
+                       gnssData.velN, gnssData.velE, gnssData.velD,
+                       gnssData.horAcc, gnssData.vertAcc,
+                       (unsigned int)gnssData.numSV,
+                       (unsigned int)gnssData.fixType,
+                       (unsigned int)batteryStatus.currentDraw,
+                       (int)batteryStatus.currentConsumed,
+                       (unsigned int)batteryStatus.batteryVoltage,
+                       (unsigned int)batteryStatus.batteryLevel,
+                       (int)actuators.motor1Throttle,
+                       (int)actuators.motor2Throttle,
+                       (unsigned int)actuators.legsPosition,
+                       (int)actuators.servoXAngle,
+                       (int)actuators.servoYAngle);
+
+    Serial.print("Formatted line length: ");
+    Serial.print(len);
+
+    uint32_t t0_write = micros();
+
+    size_t wrote = dataFile.write((const uint8_t*)line, (size_t)len);
+
+    Serial.print("\t Number of bytes written: ");
+    Serial.print(wrote);
+
+    Serial.print("\t Write time (us): ");
+    Serial.println(micros() - t0_write);
+
+    if (wrote == 0) {
+        Serial.println("Zero bytes written to SD card, assuming card was unplugged, stopping recording.");
+        isRecording = false;
+        sdInitialized = false;
+        return;
+    }
+
+    // if (micros() - tPreviousFlush >= FLUSH_SD_PERIOD_US) {
+    //     Serial.print("Flushing at time: ");
+    //     Serial.print(micros());
+
+    //     uint32_t t0_flush = micros();
+    //     dataFile.flush();
+    //     Serial.print("\t Flush time (us): ");
+    //     Serial.println(micros() - t0_flush);
+
+    //     tPreviousFlush = micros();
+    // }
 }
