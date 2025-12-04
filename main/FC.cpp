@@ -550,26 +550,19 @@ static inline float clampf(float v, float lo, float hi) {
 }
 void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
                                          float &roll, float &pitch, float &yaw) {
-    // --- CORRECTION D'AXES ---
-    // Actuellement : Roll = 90°, donc la gravité est vue sur l'axe Y (qj).
-    // Nous voulons que la gravité soit sur l'axe Z.
-    
-    // Mapping : 
-    // Body_X = Sensor_X (On garde le nez de la fusée)
-    // Body_Y = -Sensor_Z (Règle de la main droite)
-    // Body_Z = Sensor_Y  (C'est là qu'est la gravité actuellement !)
+  
 
-    float qx = qi;      // X reste X
-    float qy = -qk;     // L'ancien Z devient -Y
-    float qz = qj;      // L'ancien Y (où est la gravité) devient Z
+    float qx = qi;      
+    float qy = -qk;     
+    float qz = qj;      
 
-    // --- CALCULS (Standard Z-Y-X) ---
+
     float sinr_cosp = 2.0f * (qw * qx + qy * qz);
     float cosr_cosp = 1.0f - 2.0f * (qx * qx + qy * qy);
     roll = std::atan2(sinr_cosp, cosr_cosp) +90.0f * DEG_TO_RAD;  
 
     float sinp = 2.0f * (qw * qy - qz * qx);
-    // Protection contre NaN
+
     if (std::abs(sinp) >= 1.0f)
         pitch = std::copysign(M_PI / 2.0f, sinp); 
     else
@@ -579,7 +572,7 @@ void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
     float cosy_cosp = 1.0f - 2.0f * (qy * qy + qz * qz);
     yaw = std::atan2(siny_cosp, cosy_cosp);
     
-    // ATTENTION : Les sorties sont en RADIANS.
+    
 }
 
 void FlightController::AttitudeHold() {
