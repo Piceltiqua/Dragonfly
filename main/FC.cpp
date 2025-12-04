@@ -82,9 +82,41 @@ void FlightController::readSensors() {
 #endif
         }
 #ifndef USE_TIMERS
-        printState();
+        //printState();
 #endif
         // Update battery level
+    quaternionToEuler(attitude.qw, attitude.qi, attitude.qj, attitude.qk,
+                          current_attitude.roll, current_attitude.pitch, current_attitude.yaw);
+    lqr_att.roll = current_attitude.roll;
+    lqr_att.pitch = current_attitude.pitch;
+    lqr_att.yaw = current_attitude.yaw;
+    lqr_rates.p = attitude.wx;
+    lqr_rates.q = attitude.wy;
+    lqr_rates.r = attitude.wz;
+    Serial.print("Attitude en (rad): ");
+    Serial.print(current_attitude.roll);
+    Serial.print(", ");
+    Serial.print(current_attitude.pitch);
+    Serial.print(", ");
+    Serial.println(current_attitude.yaw);
+    Serial.print("Angle en (deg): ");
+    Serial.print(current_attitude.roll * RAD_TO_DEG);
+    Serial.print(", ");
+    Serial.print(current_attitude.pitch * RAD_TO_DEG);
+    Serial.print(", ");
+    Serial.println(current_attitude.yaw * RAD_TO_DEG);
+    
+    Serial.print("Quaternion: ");
+    Serial.print(attitude.qw);
+    Serial.print(", ");
+    Serial.print(attitude.qi);
+    Serial.print(", ");
+    Serial.print(attitude.qj);
+    Serial.print(", ");
+    Serial.println(attitude.qk);
+    command.commandGimbal(0.0f, 0.0f);
+    //AttitudeHold();
+    //command.commandMotors(0,0);
     }
 
     // Telemetry loop
@@ -102,15 +134,7 @@ void FlightController::readSensors() {
         Serial.println(micros() - t0_telemetrySend);
 #endif
     }
-    quaternionToEuler(attitude.qw, attitude.qi, attitude.qj, attitude.qk,
-                          current_attitude.roll, current_attitude.pitch, current_attitude.yaw);
-    lqr_att.roll = current_attitude.roll;
-    lqr_att.pitch = current_attitude.pitch;
-    lqr_att.yaw = current_attitude.yaw;
-    lqr_rates.p = attitude.wx;
-    lqr_rates.q = attitude.wy;
-    lqr_rates.r = attitude.wz;
-    AttitudeHold();
+    
 }
 
 void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
@@ -520,36 +544,51 @@ void FlightController::sendTelemetry() {
 }
 
 
+
 void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
-                           float &roll, float &pitch, float &yaw) {
-    float sinr_cosp = 2.0f * (qw * qi + qj * qk);
-    float cosr_cosp = 1.0f - 2.0f * (qi * qi + qj * qj);
-    float rollX = atan2f(sinr_cosp, cosr_cosp);
+                                         float &roll, float &pitch, float &yaw) {
 
-    float sinp = 2.0f * (qw * qj - qk * qi);
-    float pitchY;
-    if (fabsf(sinp) >= 1.0f)
-        pitchY = copysignf(M_PI_2, sinp);
+
+    float qx = qi;      
+    float qy = -qk;     
+    float qz = qj;      
+
+    float sinr_cosp = 2.0f * (qw * qx + qy * qz);
+    float cosr_cosp = 1.0f - 2.0f * (qx * qx + qy * qy);
+    roll = std::atan2(sinr_cosp, cosr_cosp);
+
+    float sinp = 2.0f * (qw * qy - qz * qx);
+    if (std::abs(sinp) >= 1.0f)
+        pitch = std::copysign(M_PI / 2.0f, sinp); 
     else
-        pitchY = asinf(sinp);
+        pitch = std::asin(sinp);
 
-    float siny_cosp = 2.0f * (qw * qk + qi * qj);
-    float cosy_cosp = 1.0f - 2.0f * (qj * qj + qk * qk);
-    float yawZ = atan2f(siny_cosp, cosy_cosp);
-
-    roll  = yawZ;   
-    pitch = pitchY; 
-    yaw   = rollX;  
+    float siny_cosp = 2.0f * (qw * qz + qx * qy);
+    float cosy_cosp = 1.0f - 2.0f * (qy * qy + qz * qz);
+    yaw = std::atan2(siny_cosp, cosy_cosp);
+    
 }
-
 void FlightController::AttitudeHold() {
     // LQR attitude controller for pitch and yaw stabilization
-    lqr_sp.pitch = 0.0f; // desired pitch angle setpoint
-    lqr_sp.yaw = 0.0f;   // desired yaw angle setpoint
-    attitudeCtrl.compute(lqr_att, lqr_rates, lqr_sp, lqr_out);
+    // Z == roll axis (we don't control roll here)
+    // X == pitch axis  
+    // Y == yaw axis
+    float lqr_thrust =  9.81f; 
+    float lqr_moment_arm = 0.108f; 
+    lqr_sp.pitch = 0.0f; 
+    lqr_sp.yaw = 0.0f;   
+   
+    attitudeCtrl.compute(lqr_att, lqr_rates, lqr_thrust, lqr_moment_arm, lqr_sp, lqr_out);
+    actuators.servoXAngle = lqr_out.pitchOutput * RAD_TO_DEG; 
+    actuators.servoYAngle = lqr_out.yawOutput * RAD_TO_DEG;
+    Serial.print("LQR outputs: ");
+    Serial.print(lqr_out.pitchOutput * RAD_TO_DEG);
+    Serial.print(", ");
+    Serial.println(lqr_out.yawOutput * RAD_TO_DEG);
 
-    actuators.servoXAngle = lqr_out.pitchOutput;
-    actuators.servoYAngle = lqr_out.yawOutput;
-
+    Serial.print("Servo angles: ");
+    Serial.print(actuators.servoXAngle);
+    Serial.print(", ");
+    Serial.println(actuators.servoYAngle);
     command.commandGimbal(actuators.servoXAngle, actuators.servoYAngle);
 }

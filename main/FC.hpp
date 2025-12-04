@@ -8,6 +8,8 @@
 #include "Utils.hpp"
 #include "LQR_attitude.hpp"
 #include <Eigen/LU>
+#include <cmath>
+
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
 
@@ -60,15 +62,14 @@ private:
     elapsedMicros telemTimer;
     //Controleur constants
     Eigen::Matrix<float, 2, 4> K_lqr =
-        (Eigen::Matrix<float, 2, 4>() << 0.4472f, 0.0f, 0.2184f, 0.0f,
-                                   0.0f, 0.4472f, 0.0f, 0.2185f)
+        (Eigen::Matrix<float, 2, 4>() << 0.5345f, -0.0000f, 0.2484f, -0.0000f,
+                                   -0.0000f, 0.5345f, -0.0000f, 0.2484f)
             .finished();
     Attitude_angle lqr_att;
     Attitude_angle current_attitude;
     rotationspeed lqr_rates;
     AttitudeSetpoint lqr_sp;
     ControlOutput_attitude lqr_out;
-    
     // Telemetry constants
     bool isRecording = false;
     bool inFrame = false;
