@@ -38,8 +38,9 @@ void FlightController::readSensors() {
     // Attitude loop
     if (IMUTimer >= IMU_PERIOD_US) {
         // Receive commands
-        IMUTimer -= IMU_PERIOD_US;
 
+        IMUTimer -= IMU_PERIOD_US;
+        flightTimeSeconds = (float)millis() / 1000.0f;
         imu.read();
 
         battery.readVoltage();
@@ -53,7 +54,8 @@ void FlightController::readSensors() {
         }
 
         if (isRecording && SD.mediaPresent()) {
-            writeToSD();
+            writeToRingBuffer();
+            writeBufferToSD();
         } else if (!SD.mediaPresent()) {
             isRecording = false;    // stop recording if SD removed
             sdInitialized = false;  // force re-init on next start
@@ -62,7 +64,6 @@ void FlightController::readSensors() {
         if (gnssData.fixType == 6) {
             ekf.predict(1.0f / IMU_FREQ_HZ);
         }
-        // Update battery level
     }
 
     // Telemetry loop
@@ -349,6 +350,9 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     memcpy(p, &isRecording, sizeof(isRecording));
     p += sizeof(isRecording);
 
+    memcpy(p, &flightTimeSeconds, sizeof(flightTimeSeconds));
+    p += sizeof(flightTimeSeconds);
+
     outLen = p - buf;
 }
 
@@ -496,17 +500,30 @@ void FlightController::handleRecordingMessage(uint8_t rec) {
             if (sdInitialized && gnssData.fixType >= 5) {
                 filename = gnss.getDateFilename();
                 dataFile = SD.sdfs.open(filename.c_str(), O_WRITE | O_CREAT);
-                if (dataFile.preAllocate(2 * 1024 * 1024)) {
-                    Serial.print("Allocated 2 MB for ");
-                    Serial.println(filename);
+                if (!dataFile.isOpen()) {
+                    Serial.println("Failed to open file for logging");
+                    isRecording = false;
                 } else {
-                    Serial.println("Unable to preallocate this file");
-                }
-                writeHeader();
-                isRecording = true;
+                    // Pre-allocate to avoid FAT allocation during logging (helps reduce long pauses)
+                    if (dataFile.preAllocate(LOG_FILE_SIZE)) {
+                        Serial.print("Preallocated ");
+                        Serial.print(LOG_FILE_SIZE);
+                        Serial.print(" bytes for ");
+                        Serial.println(filename);
+                    } else {
+                        Serial.println("Unable to preallocate this file (continuing without prealloc)");
+                    }
 
-                Serial.print("Opened file with name: ");
-                Serial.println(filename);
+                    // Initialize ring buffer bound to this file. This is crucial.
+                    rb.begin(&dataFile);
+
+                    // Optionally: write the header into the ring buffer so header is also logged.
+                    writeHeader();
+
+                    isRecording = true;
+                    Serial.print("Opened file with name: ");
+                    Serial.println(filename);
+                }
             } else {
                 isRecording = false;
             }
@@ -514,19 +531,22 @@ void FlightController::handleRecordingMessage(uint8_t rec) {
     }
 
     // Command to stop recording
-    else if (rec == 0xF1) {  // stop rec
+    else if (rec == 0xF1) {
         if (isRecording) {
-            isRecording = false;
+            // Write any remaining ring buffer data to the file and truncate the pre-allocated tail.
+            rb.sync();  // write remaining bytes to file (may block briefly to write last sectors)
+            // Remove remaining pre-allocated space
+            dataFile.truncate();
             dataFile.close();
+            isRecording = false;
             Serial.println("Closed file.");
-            // stop sd logging
         }
     }
 }
 
 void FlightController::initializeSD() {
     // Initialize SD card (needed before attempting to open files)
-    if (!SD.sdfs.begin(SdioConfig(DMA_SDIO)))  // Use SDFat library with DMA, alternative is SD.sdfs.begin(SdioConfig(FIFO_SDIO))
+    if (!SD.sdfs.begin(SdioConfig(FIFO_SDIO)))  // Use SDFat library with DMA, alternative is SD.sdfs.begin(SdioConfig(FIFO_SDIO))
     {
         Serial.println("SD.sdfs.begin() failed - SD card not found");
         sdInitialized = false;
@@ -551,7 +571,7 @@ void FlightController::writeHeader() {
     dataFile.flush();
 }
 
-void FlightController::writeToSD() {
+void FlightController::writeToRingBuffer() {
     if (!isRecording || !sdInitialized) return;
 
     char line[512];
@@ -559,7 +579,7 @@ void FlightController::writeToSD() {
                        "%lu,"                                 // micros
                        "%.4f,%.4f,%.4f,"                      // posN,posE,posD
                        "%.4f,%.4f,%.4f,"                      // velN,velE,velD
-                       "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,"  // qw,qi,qj,qk,wx,wy,wz (7 floats)
+                       "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,"  // qw,qi,qj,qk,wx,wy,wz
                        "%.6f,%.6f,%.6f,"                      // imu ax,ay,az
                        "%.12f,%.12f,%.4f,"                    // GNSS lat(double), lon(double), alt(float)
                        "%.4f,%.4f,%.4f,"                      // GNSS posN,posE,posD
@@ -567,7 +587,7 @@ void FlightController::writeToSD() {
                        "%.4f,%.4f,"                           // GNSS horAcc, vertAcc
                        "%u,%u,"                               // numSV (uint8_t), fixType (uint8_t)
                        "%u,%d,%u,%u,"                         // battery currentDraw(uint16_t), currentConsumed(int16_t), batteryVoltage(uint16_t), batteryLevel(uint8_t)
-                       "%d,%d,%u,%d,%d\n",                    // actuators motor1Throttle(int16_t), motor2Throttle(int16_t), legsPosition(uint8_t), servoXAngle(int16_t), servoYAngle(int16_t)
+                       "%d,%d,%u,%d,%d\n",                    // actuators ...
                        (unsigned long)micros(),
                        posvel.posN, posvel.posE, posvel.posD,
                        posvel.velN, posvel.velE, posvel.velD,
@@ -590,35 +610,48 @@ void FlightController::writeToSD() {
                        (int)actuators.servoXAngle,
                        (int)actuators.servoYAngle);
 
-    Serial.print("Formatted line length: ");
-    Serial.print(len);
-
-    uint32_t t0_write = micros();
-
-    size_t wrote = dataFile.write((const uint8_t*)line, (size_t)len);
-
-    Serial.print("\t Number of bytes written: ");
-    Serial.print(wrote);
-
-    Serial.print("\t Write time (us): ");
-    Serial.println(micros() - t0_write);
-
-    if (wrote == 0) {
-        Serial.println("Zero bytes written to SD card, assuming card was unplugged, stopping recording.");
-        isRecording = false;
-        sdInitialized = false;
+    if (len <= 0) return;
+    if ((size_t)len >= sizeof(line)) {
+        // truncated; increase line buffer if needed
         return;
     }
 
-    // if (micros() - tPreviousFlush >= FLUSH_SD_PERIOD_US) {
-    //     Serial.print("Flushing at time: ");
-    //     Serial.print(micros());
+    // Fast: write the preformatted bytes into the ring buffer
+    size_t written = rb.write((const uint8_t*)line, (size_t)len);
 
-    //     uint32_t t0_flush = micros();
-    //     dataFile.flush();
-    //     Serial.print("\t Flush time (us): ");
-    //     Serial.println(micros() - t0_flush);
+    // If ringbuffer overflowed or write didn't fit, rb.getWriteError() becomes true
+    if (rb.getWriteError() || written != (size_t)len) {
+        // drop policy: drop this line and increment counter
+        droppedLines++;
+        // clear the write error so future writes succeed
+        rb.clearWriteError();
+    }
+}
 
-    //     tPreviousFlush = micros();
+void FlightController::writeBufferToSD() {
+    // How many bytes currently in the ring buffer
+    size_t n = rb.bytesUsed();
+
+    // OPTIONAL: avoid filling to near file preallocated end
+    // if ((n + dataFile.curPosition()) > (LOG_FILE_SIZE - 20)) {
+    //     // disk full logic
     // }
+
+    // Only write a sector when there's at least one sector buffered and the file not busy.
+    if (n >= 512 && !dataFile.isBusy()) {
+        // write out exactly 512 bytes from ring buffer into the file.
+        // writeOut returns number bytes written, or 0 on failure.
+        size_t bytesWrittenToSD = rb.writeOut(512);
+
+        // Serial.print("Bytes written to SD: ");
+        // Serial.println(bytesWrittenToSD);
+
+        if (bytesWrittenToSD == 0) {
+            Serial.println("rb.writeOut failed");
+            // handle fatal: stop recording
+            isRecording = false;
+            sdInitialized = false;
+            return;
+        }
+    }
 }

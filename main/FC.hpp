@@ -9,13 +9,15 @@
 #include "EKF.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
+#include "RingBuf.h"
+#include "SdFat.h"
 #include "Utils.hpp"
 
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
 
 #define IMU_FREQ_HZ 250.0
-#define TELEMETRY_FREQ_HZ 20.0
+#define TELEMETRY_FREQ_HZ 15.0
 
 #define IMU_PERIOD_US (1000000.0 / IMU_FREQ_HZ)
 #define TELEMETRY_PERIOD_US (1000000.0 / TELEMETRY_FREQ_HZ)
@@ -23,6 +25,14 @@
 #define MAX_FRAME_BUFFER 2048
 // Use some RAM to increase the size of the UART TX buffer, ensures that the telemetry isn't blocking
 inline uint8_t extra_tx_mem[128];  // Default size of the buffer is 63 bytes, adding this leaves space (64+128) for the telemetry packets (which are around 122 bytes).
+
+// Logging buffer sizing: tune these to available RAM and required safety.
+// RING_BUF_SECTORS * 512 = ring buffer bytes.
+#define RING_BUF_SECTORS 16  // 16 * 512 = 8192 bytes ring buffer (adjust up if you have RAM)
+#define RING_BUF_BYTES (512U * RING_BUF_SECTORS)
+
+// Maximum file size to preallocate (optional). Tune to expected run time.
+#define LOG_FILE_SIZE (32UL * 1024UL * 1024UL)  // 32 MiB default (adjust as needed)
 
 enum class FCState {
     NoFix,
@@ -62,6 +72,7 @@ private:
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
+    float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight
 
     // Telemetry constants
     bool isRecording = false;
@@ -86,9 +97,19 @@ private:
     void handleRecordingMessage(uint8_t rec);
     void initializeSD();
     void writeHeader();
-    void writeToSD();
+    void writeToRingBuffer();
+    void writeBufferToSD();
+
     FsFile dataFile;
-    unsigned long write_start = 0;
+    // RingBuf for FsFile with a 512-byte sector size and RING_BUF_SECTORS sectors
+    RingBuf<FsFile, 512 * RING_BUF_SECTORS> rb;
+
+    // Stats / config
+    uint32_t droppedLines = 0;
+    uint32_t writeSlowCount = 0;
+    uint32_t writeVerySlowCount = 0;
+
+    uint32_t write_start = 0;
     bool sdInitialized = false;
     String filename;
     uint32_t tPreviousFlush = 0;
