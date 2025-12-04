@@ -9,6 +9,7 @@
 #include "LQR_attitude.hpp"
 #include <Eigen/LU>
 #include <cmath>
+#include <algorithm>
 
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"

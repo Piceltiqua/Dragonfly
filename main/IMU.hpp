@@ -6,7 +6,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
-#define IMU_TIMEOUT 1000
+#define IMU_TIMEOUT 6000
 
 class IMU {
 public:

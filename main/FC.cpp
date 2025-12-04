@@ -114,8 +114,8 @@ void FlightController::readSensors() {
     Serial.print(attitude.qj);
     Serial.print(", ");
     Serial.println(attitude.qk);
-    command.commandGimbal(0.0f, 0.0f);
-    //AttitudeHold();
+    //command.commandGimbal(0.0f, 0.0f);
+    AttitudeHold();
     //command.commandMotors(0,0);
     }
 
@@ -545,19 +545,31 @@ void FlightController::sendTelemetry() {
 
 
 
+static inline float clampf(float v, float lo, float hi) {
+    return (v < lo) ? lo : (v > hi) ? hi : v;
+}
 void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
                                          float &roll, float &pitch, float &yaw) {
+    // --- CORRECTION D'AXES ---
+    // Actuellement : Roll = 90°, donc la gravité est vue sur l'axe Y (qj).
+    // Nous voulons que la gravité soit sur l'axe Z.
+    
+    // Mapping : 
+    // Body_X = Sensor_X (On garde le nez de la fusée)
+    // Body_Y = -Sensor_Z (Règle de la main droite)
+    // Body_Z = Sensor_Y  (C'est là qu'est la gravité actuellement !)
 
+    float qx = qi;      // X reste X
+    float qy = -qk;     // L'ancien Z devient -Y
+    float qz = qj;      // L'ancien Y (où est la gravité) devient Z
 
-    float qx = qi;      
-    float qy = -qk;     
-    float qz = qj;      
-
+    // --- CALCULS (Standard Z-Y-X) ---
     float sinr_cosp = 2.0f * (qw * qx + qy * qz);
     float cosr_cosp = 1.0f - 2.0f * (qx * qx + qy * qy);
-    roll = std::atan2(sinr_cosp, cosr_cosp);
+    roll = std::atan2(sinr_cosp, cosr_cosp) +90.0f * DEG_TO_RAD;  
 
     float sinp = 2.0f * (qw * qy - qz * qx);
+    // Protection contre NaN
     if (std::abs(sinp) >= 1.0f)
         pitch = std::copysign(M_PI / 2.0f, sinp); 
     else
@@ -567,28 +579,43 @@ void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
     float cosy_cosp = 1.0f - 2.0f * (qy * qy + qz * qz);
     yaw = std::atan2(siny_cosp, cosy_cosp);
     
+    // ATTENTION : Les sorties sont en RADIANS.
 }
+
 void FlightController::AttitudeHold() {
-    // LQR attitude controller for pitch and yaw stabilization
-    // Z == roll axis (we don't control roll here)
-    // X == pitch axis  
-    // Y == yaw axis
-    float lqr_thrust =  9.81f; 
+    float lqr_thrust = 15.0f;     
     float lqr_moment_arm = 0.108f; 
+
+    
+    lqr_att.pitch = current_attitude.pitch;
+    
+    
+    
+    lqr_att.yaw = current_attitude.roll; 
+
+    lqr_rates.q = attitude.wy; 
+    lqr_rates.r = attitude.wx; 
+
     lqr_sp.pitch = 0.0f; 
-    lqr_sp.yaw = 0.0f;   
+    lqr_sp.yaw   = 0.0f; 
    
     attitudeCtrl.compute(lqr_att, lqr_rates, lqr_thrust, lqr_moment_arm, lqr_sp, lqr_out);
-    actuators.servoXAngle = lqr_out.pitchOutput * RAD_TO_DEG; 
-    actuators.servoYAngle = lqr_out.yawOutput * RAD_TO_DEG;
-    Serial.print("LQR outputs: ");
-    Serial.print(lqr_out.pitchOutput * RAD_TO_DEG);
-    Serial.print(", ");
-    Serial.println(lqr_out.yawOutput * RAD_TO_DEG);
 
-    Serial.print("Servo angles: ");
+    
+    actuators.servoXAngle = -lqr_out.pitchOutput * RAD_TO_DEG; 
+    
+    actuators.servoYAngle = -lqr_out.yawOutput * RAD_TO_DEG;
+
+    command.commandGimbal(actuators.servoXAngle, actuators.servoYAngle);
+    
+    // Debug
+    
+    Serial.print("Erreurs (deg): ");
+    Serial.print(lqr_att.pitch * RAD_TO_DEG);
+    Serial.print(", ");
+    Serial.println(lqr_att.yaw * RAD_TO_DEG);
+    Serial.print("Outputs (deg): ");
     Serial.print(actuators.servoXAngle);
     Serial.print(", ");
     Serial.println(actuators.servoYAngle);
-    command.commandGimbal(actuators.servoXAngle, actuators.servoYAngle);
 }
