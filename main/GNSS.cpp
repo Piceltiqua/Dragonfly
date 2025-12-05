@@ -5,8 +5,6 @@ bfs::Ubx ubx(&Serial5);
 void GNSS::setup() {
     Serial5.begin(115200);
     ubx.Begin(115200);
-    Serial5.begin(115200);
-    ubx.Begin(115200);
 }
 
 bool GNSS::read() {
@@ -68,6 +66,17 @@ void GNSS::computeCGPositionNED() {
     gnssData_.posN = p_cg_ned.x();
     gnssData_.posE = p_cg_ned.y();
     gnssData_.posD = p_cg_ned.z();
+
+    // Store snapshot for logging
+    last_snapshot_.r_ant_ned_x = r_ant_ned.x();
+    last_snapshot_.r_ant_ned_y = r_ant_ned.y();
+    last_snapshot_.r_ant_ned_z = r_ant_ned.z();
+    last_snapshot_.p_ant_ned_x = p_ant_ned.x();
+    last_snapshot_.p_ant_ned_y = p_ant_ned.y();
+    last_snapshot_.p_ant_ned_z = p_ant_ned.z();
+    last_snapshot_.p_cg_ned_x = p_cg_ned.x();
+    last_snapshot_.p_cg_ned_y = p_cg_ned.y();
+    last_snapshot_.p_cg_ned_z = p_cg_ned.z();
 }
 
 void GNSS::computeCGVelocityNED() {
@@ -83,58 +92,19 @@ void GNSS::computeCGVelocityNED() {
     gnssData_.velN = alpha * v_cg_ned.x() + (1 - alpha) * gnssData_.velN;
     gnssData_.velE = alpha * v_cg_ned.y() + (1 - alpha) * gnssData_.velE;
     gnssData_.velD = alpha * v_cg_ned.z() + (1 - alpha) * gnssData_.velD;
-
-    // Serial.print(millis());
-    // Serial.print(",");
-    // Serial.print(gnssData_.posN);
-    // Serial.print(",");
-    // Serial.print(gnssData_.posE);
-    // Serial.print(",");
-    // Serial.print(gnssData_.posD);
-    // Serial.print(",");
-
-    // Serial.print(gnssData_.velN);
-    // Serial.print(",");
-    // Serial.print(gnssData_.velE);
-    // Serial.print(",");
-    // Serial.print(gnssData_.velD);
-    // Serial.print(",");
-
-    // Serial.print(gnssData_.horAcc);
-    // Serial.print(",");
-    // Serial.print(gnssData_.vertAcc);
-    // Serial.print(",");
-    // Serial.print(gnssData_.numSV);
-    // Serial.print(",");
-    // Serial.print(gnssData_.fixType);
-    // Serial.print(",");
-
-    // Serial.print(omega_ned_interp.x());
-    // Serial.print(",");
-    // Serial.print(omega_ned_interp.y());
-    // Serial.print(",");
-    // Serial.print(omega_ned_interp.z());
-    // Serial.print(",");
-
-    // Serial.print(r_ant_ned_interp.x());
-    // Serial.print(",");
-    // Serial.print(r_ant_ned_interp.y());
-    // Serial.print(",");
-    // Serial.print(r_ant_ned_interp.z());
-    // Serial.print(",");
-
-    // Serial.print(v_ant_ned.x());
-    // Serial.print(",");
-    // Serial.print(v_ant_ned.y());
-    // Serial.print(",");
-    // Serial.print(v_ant_ned.z());
-    // Serial.print(",");
-
-    // Serial.print(v_cg_ned.x());
-    // Serial.print(",");
-    // Serial.print(v_cg_ned.y());
-    // Serial.print(",");
-    // Serial.println(v_cg_ned.z());
+    // Store snapshot for logging
+    last_snapshot_.v_cg_ned_x = v_cg_ned.x();
+    last_snapshot_.v_cg_ned_y = v_cg_ned.y();
+    last_snapshot_.v_cg_ned_z = v_cg_ned.z();
+    last_snapshot_.v_ant_ned_x = v_ant_ned.x();
+    last_snapshot_.v_ant_ned_y = v_ant_ned.y();
+    last_snapshot_.v_ant_ned_z = v_ant_ned.z();
+    last_snapshot_.omega_ned_interp_x = omega_ned_interp.x();
+    last_snapshot_.omega_ned_interp_y = omega_ned_interp.y();
+    last_snapshot_.omega_ned_interp_z = omega_ned_interp.z();
+    last_snapshot_.r_ant_ned_interp_x = r_ant_ned_interp.x();
+    last_snapshot_.r_ant_ned_interp_y = r_ant_ned_interp.y();
+    last_snapshot_.r_ant_ned_interp_z = r_ant_ned_interp.z();
 }
 
 bool GNSS::interpolateIMUSample() {

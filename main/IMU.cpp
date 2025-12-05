@@ -85,44 +85,71 @@ void IMU::imuEnuToCadNedQuat() {
 
     // Normalize output quaternion
     q_cad_to_ned = q_cad_to_ned.normalized();
+
+    // Store snapshot for logging
+    last_snapshot_.q_imu_to_enu_w = q_imu_to_enu.w();
+    last_snapshot_.q_imu_to_enu_x = q_imu_to_enu.x();
+    last_snapshot_.q_imu_to_enu_y = q_imu_to_enu.y();
+    last_snapshot_.q_imu_to_enu_z = q_imu_to_enu.z();
+    last_snapshot_.q_cad_to_ned_w = q_cad_to_ned.w();
+    last_snapshot_.q_cad_to_ned_x = q_cad_to_ned.x();
+    last_snapshot_.q_cad_to_ned_y = q_cad_to_ned.y();
+    last_snapshot_.q_cad_to_ned_z = q_cad_to_ned.z();
 }
 
 void IMU::imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
                       float& ax_NED, float& ay_NED, float& az_NED) {
-                          // Converts the acceleration from the IMU frame to the NED frame, to express the acceleration in world frame (NED)
+    // Converts the acceleration from the IMU frame to the NED frame, to express the acceleration in world frame (NED)
 
-                          // Acceleration vector in the frame of the IMU
-                          Eigen::Vector3f acc_imu(ax_IMU, ay_IMU, az_IMU);
+    // Acceleration vector in the frame of the IMU
+    Eigen::Vector3f acc_imu(ax_IMU, ay_IMU, az_IMU);
 
-                          // Acceleration vector in the CAD frame, computed from the fixed quaternion that maps CAD to IMU.
-                          Eigen::Vector3f acc_cad = q_cad_to_imu.inverse() * acc_imu;
+    // Acceleration vector in the CAD frame, computed from the fixed quaternion that maps CAD to IMU.
+    Eigen::Vector3f acc_cad = q_cad_to_imu.inverse() * acc_imu;
 
-                          // Rotate to from CAD frame to NED using quaternion-vector multiplication
-                          Eigen::Vector3f acc_ned = q_cad_to_ned * acc_cad;
+    // Rotate to from CAD frame to NED using quaternion-vector multiplication
+    Eigen::Vector3f acc_ned = q_cad_to_ned * acc_cad;
 
-                          ax_NED = acc_ned.x();
-                          ay_NED = acc_ned.y();
-                          az_NED = acc_ned.z();
-                      }
+    ax_NED = acc_ned.x();
+    ay_NED = acc_ned.y();
+    az_NED = acc_ned.z();
 
-                      void IMU::pushImuSample() {
-                          // Push the latest IMU sample into the buffer for interpolation use in GNSS velocity correction
+    // Store snapshot for logging
+    last_snapshot_.acc_imu_x = acc_imu.x();
+    last_snapshot_.acc_imu_y = acc_imu.y();
+    last_snapshot_.acc_imu_z = acc_imu.z();
+    last_snapshot_.acc_cad_x = acc_cad.x();
+    last_snapshot_.acc_cad_y = acc_cad.y();
+    last_snapshot_.acc_cad_z = acc_cad.z();
+    last_snapshot_.acc_ned_x = acc_ned.x();
+    last_snapshot_.acc_ned_y = acc_ned.y();
+    last_snapshot_.acc_ned_z = acc_ned.z();
+}
 
-                          // IMU angular rates in IMU frame
-                          Eigen::Vector3f omega_IMU(attitude_.wx, attitude_.wy, attitude_.wz);
+void IMU::pushImuSample() {
+    // Push the latest IMU sample into the buffer for interpolation use in GNSS velocity correction
 
-                          // Angular rates in CAD frame
-                          Eigen::Vector3f omega_cad = q_cad_to_imu.conjugate() * omega_IMU;
+    // IMU angular rates in IMU frame
+    Eigen::Vector3f omega_IMU(attitude_.wx, attitude_.wy, attitude_.wz);
 
-                          // Angular rates in NED frame
-                          newImuSample.omega_ned = q_cad_to_ned * omega_cad;
+    // Angular rates in CAD frame
+    Eigen::Vector3f omega_cad = q_cad_to_imu.conjugate() * omega_IMU;
 
-                          // Antenna position in NED frame
-                          newImuSample.r_ant_ned = q_cad_to_ned * r_ant_cad;
+    // Angular rates in NED frame
+    newImuSample.omega_ned = q_cad_to_ned * omega_cad;
 
-                          newImuSample.t_us = micros();
+    // Antenna position in NED frame
+    newImuSample.r_ant_ned = q_cad_to_ned * r_ant_cad;
 
-                          imu_buf.push_back(newImuSample);
+    newImuSample.t_us = micros();
 
-                          while (imu_buf.size() > 1000) imu_buf.pop_front();  // Keep memory usage bounded
-                      }
+    imu_buf.push_back(newImuSample);
+
+    while (imu_buf.size() > 1000) imu_buf.pop_front();  // Keep memory usage bounded
+
+    // Store snapshot for logging
+    last_snapshot_.omega_imu_x = omega_IMU.x();
+    last_snapshot_.omega_imu_y = omega_IMU.y();
+    last_snapshot_.omega_imu_z = omega_IMU.z();
+    last_snapshot_.t_us = newImuSample.t_us;
+}

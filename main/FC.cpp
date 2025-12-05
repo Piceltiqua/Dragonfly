@@ -38,6 +38,8 @@ void FlightController::readSensors() {
     // Attitude loop
     if (IMUTimer >= IMU_PERIOD_US) {
         // Receive commands
+        static uint32_t sensorReadCounter = 0;
+        sensorReadCounter++;
 
         IMUTimer -= IMU_PERIOD_US;
         flightTimeSeconds = (float)millis() / 1000.0f;
@@ -557,70 +559,47 @@ void FlightController::initializeSD() {
 }
 
 void FlightController::writeHeader() {
-    dataFile.println(
-        "time_us,posN_m,posE_m,posD_m,velN_m/s,velE_m/s,velD_m/s,"
-        "Qw,Qx,Qy,Qz,Wx_rad/s,Wy_rad/s,Wz_rad/s,"
-        "accN_m/s2,accE_m/s2,accD_m/s2,"
-        "GNSS_lat_deg,GNSS_lon_deg,GNSS_alt_m,"
-        "GNSS_posN_m,GNSS_posE_m,GNSS_posD_m,"
-        "GNSS_velN_m/s,GNSS_velE_m/s,GNSS_velD_m/s,"
-        "GNSS_HorAcc_m,GNSS_VertAcc_m,numSV,FixType,"
-        "CurrentDraw_mA,CurrentConsumed_mAh,BatteryVoltage_V,BatteryLevel_percent,"
-        "Motor1Throttle_percent,Motor2Throttle_percent,"
-        "LegsPosition_servo,GimbalX_deg,GimbalY_deg");
+    String header = Logging::generateCsvHeader();
+    dataFile.println(header);
     dataFile.flush();
 }
 
 void FlightController::writeToRingBuffer() {
     if (!isRecording || !sdInitialized) return;
 
-    char line[512];
-    int len = snprintf(line, sizeof(line),
-                       "%lu,"                                 // micros
-                       "%.4f,%.4f,%.4f,"                      // posN,posE,posD
-                       "%.4f,%.4f,%.4f,"                      // velN,velE,velD
-                       "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,"  // qw,qi,qj,qk,wx,wy,wz
-                       "%.6f,%.6f,%.6f,"                      // imu ax,ay,az
-                       "%.12f,%.12f,%.4f,"                    // GNSS lat(double), lon(double), alt(float)
-                       "%.4f,%.4f,%.4f,"                      // GNSS posN,posE,posD
-                       "%.4f,%.4f,%.4f,"                      // GNSS velN,velE,velD
-                       "%.4f,%.4f,"                           // GNSS horAcc, vertAcc
-                       "%u,%u,"                               // numSV (uint8_t), fixType (uint8_t)
-                       "%u,%d,%u,%u,"                         // battery currentDraw(uint16_t), currentConsumed(int16_t), batteryVoltage(uint16_t), batteryLevel(uint8_t)
-                       "%d,%d,%u,%d,%d\n",                    // actuators ...
-                       (unsigned long)micros(),
-                       posvel.posN, posvel.posE, posvel.posD,
-                       posvel.velN, posvel.velE, posvel.velD,
-                       attitude.qw, attitude.qi, attitude.qj, attitude.qk,
-                       attitude.wx, attitude.wy, attitude.wz,
-                       imuAcc.ax_NED, imuAcc.ay_NED, imuAcc.az_NED,
-                       gnssData.lat, gnssData.lon, gnssData.alt,
-                       gnssData.posN, gnssData.posE, gnssData.posD,
-                       gnssData.velN, gnssData.velE, gnssData.velD,
-                       gnssData.horAcc, gnssData.vertAcc,
-                       (unsigned int)gnssData.numSV,
-                       (unsigned int)gnssData.fixType,
-                       (unsigned int)batteryStatus.currentDraw,
-                       (int)batteryStatus.currentConsumed,
-                       (unsigned int)batteryStatus.batteryVoltage,
-                       (unsigned int)batteryStatus.batteryLevel,
-                       (int)actuators.motor1Throttle,
-                       (int)actuators.motor2Throttle,
-                       (unsigned int)actuators.legsPosition,
-                       (int)actuators.servoXAngle,
-                       (int)actuators.servoYAngle);
+    static uint32_t rowCounter = 0;
+    rowCounter++;
 
-    if (len <= 0) return;
-    if ((size_t)len >= sizeof(line)) {
-        // truncated; increase line buffer if needed
+    // Get snapshots from all components
+    const EkfSnapshot& ekfSnap = ekf.getLastSnapshot();
+    const GnssSnapshot& gnssSnap = gnss.getLastSnapshot();
+    const ImuSnapshot& imuSnap = imu.getLastSnapshot();
+
+    // Pack into CSV format using snprintf
+    // Buffer must be large enough to hold the entire CSV line without truncation
+    char line[5120];  // Increased to accommodate ~2500+ byte lines with safety margin
+    size_t len = Logging::packSnapshotCsv(line, sizeof(line),
+                                          (uint32_t)micros(),
+                                          posvel, attitude, imuAcc, gnssData,
+                                          batteryStatus, actuators,
+                                          ekfSnap, gnssSnap, imuSnap);
+
+    // Check for errors: packSnapshotCsv returns 0 on failure or if truncated
+    if (len <= 0 || len >= sizeof(line) - 1) {
+        // Line was truncated or failed to format
+        droppedLines++;
         return;
     }
 
+    // Append newline
+    line[len] = '\n';
+    len++;
+
     // Fast: write the preformatted bytes into the ring buffer
-    size_t written = rb.write((const uint8_t*)line, (size_t)len);
+    size_t written = rb.write((const uint8_t*)line, len);
 
     // If ringbuffer overflowed or write didn't fit, rb.getWriteError() becomes true
-    if (rb.getWriteError() || written != (size_t)len) {
+    if (rb.getWriteError() || written != len) {
         // drop policy: drop this line and increment counter
         droppedLines++;
         // clear the write error so future writes succeed
@@ -629,25 +608,11 @@ void FlightController::writeToRingBuffer() {
 }
 
 void FlightController::writeBufferToSD() {
-    // How many bytes currently in the ring buffer
-    size_t n = rb.bytesUsed();
-
-    // OPTIONAL: avoid filling to near file preallocated end
-    // if ((n + dataFile.curPosition()) > (LOG_FILE_SIZE - 20)) {
-    //     // disk full logic
-    // }
-
-    // Only write a sector when there's at least one sector buffered and the file not busy.
-    if (n >= 512 && !dataFile.isBusy()) {
-        // write out exactly 512 bytes from ring buffer into the file.
-        // writeOut returns number bytes written, or 0 on failure.
+    // Systematically drain ring buffer in 512-byte sectors until less than 512 bytes remain
+    while (rb.bytesUsed() >= 512 && !dataFile.isBusy()) {
         size_t bytesWrittenToSD = rb.writeOut(512);
 
-        // Serial.print("Bytes written to SD: ");
-        // Serial.println(bytesWrittenToSD);
-
         if (bytesWrittenToSD == 0) {
-            Serial.println("rb.writeOut failed");
             // handle fatal: stop recording
             isRecording = false;
             sdInitialized = false;
