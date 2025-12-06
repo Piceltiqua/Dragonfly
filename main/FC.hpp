@@ -30,7 +30,7 @@ inline uint8_t extra_tx_mem[128];  // Default size of the buffer is 63 bytes, ad
 // Logging buffer sizing: tune these to available RAM and required safety.
 // RING_BUF_SECTORS * 512 = ring buffer bytes.
 // 8KB buffer is sufficient when draining systematically on every writeBufferToSD() call
-#define RING_BUF_SECTORS 16  // 16 * 512 = 8192 bytes ring buffer (sufficient with aggressive draining)
+#define RING_BUF_SECTORS 40  // 40 * 512 = 20480 bytes ring buffer (sufficient with aggressive draining)
 #define RING_BUF_BYTES (512U * RING_BUF_SECTORS)
 
 // Maximum file size to preallocate (optional). Tune to expected run time.
@@ -72,6 +72,7 @@ private:
     // PositionController posCtrl;
 
     elapsedMicros IMUTimer;
+    uint32_t IMU_previous_predict = 0;
     bool gnssReading;
     elapsedMicros telemTimer;
     float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight
@@ -115,6 +116,7 @@ private:
     bool sdInitialized = false;
     String filename;
     uint32_t tPreviousFlush = 0;
+    uint32_t tSetOrigin = 0;
 };
 
 #endif

@@ -27,6 +27,7 @@ void FlightController::setup() {
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
     Serial1.addMemoryForWrite(extra_tx_mem, sizeof(extra_tx_mem));
     delay(1000);
+    IMU_previous_predict = micros();
 }
 
 void FlightController::readSensors() {
@@ -64,7 +65,8 @@ void FlightController::readSensors() {
         }
 
         if (gnssData.fixType == 6) {
-            ekf.predict(1.0f / IMU_FREQ_HZ);
+            ekf.predict((micros() - IMU_previous_predict) / 1000000.0f);
+            IMU_previous_predict = micros();
         }
     }
 
@@ -129,7 +131,14 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
         case MSG_ORIG:
             ekf.setup();
             gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
+            posvel.posN = 0.0f;
+            posvel.posE = 0.0f;
+            posvel.posD = 0.0f;
+            posvel.velN = 0.0f;
+            posvel.velE = 0.0f;
+            posvel.velD = 0.0f;
             command.setLedColor(1, 0, 1);
+            tSetOrigin = micros();
             break;
 
         case MSG_ENG:
@@ -609,10 +618,73 @@ void FlightController::writeToRingBuffer() {
 
 void FlightController::writeBufferToSD() {
     // Systematically drain ring buffer in 512-byte sectors until less than 512 bytes remain
-    while (rb.bytesUsed() >= 512 && !dataFile.isBusy()) {
+    // CRITICAL FIX: Write multiple sectors at once if ring buffer is getting full
+    // This prevents the ring buffer from filling up and blocking writes
+    // Write aggressively when buffer usage is high (>50% = 10240 bytes)
+    size_t n = rb.bytesUsed();
+
+    static uint32_t sdWriteCallCount = 0;
+    sdWriteCallCount++;
+    if (sdWriteCallCount % 20 == 0) {  // Every 20 calls (~267ms at 250Hz IMU)
+        // Serial.print("[SD_WRITE_CHECK] bytesUsed=");
+        // Serial.print(n);
+        // Serial.print(" isBusy=");
+        // Serial.print(dataFile.isBusy());
+        // Serial.print(" filePos=");
+        // Serial.println(dataFile.curPosition());
+    }
+
+    if (n >= 10240 && !dataFile.isBusy()) {
+        // Debug: aggressive drain
+        // Serial.print("[RB_AGGRESSIVE_DRAIN] Starting drain at bytesUsed=");
+        // Serial.println(n);
+
+        // Write up to 4 sectors (2048 bytes) at a time to catch up
+        for (int i = 0; i < 4; i++) {
+            size_t remaining = rb.bytesUsed();
+            if (remaining < 512) break;  // Not enough for a full sector
+
+            size_t bytesWrittenToSD = rb.writeOut(512);
+            if (bytesWrittenToSD == 0) {
+                // Serial.print("[SD_FATAL_ERROR] At file position: ");
+                // Serial.println(dataFile.curPosition());
+                // handle fatal: stop recording
+                isRecording = false;
+                sdInitialized = false;
+                return;
+            }
+
+            if (i == 3) {
+                // Serial.print("[RB_AGGRESSIVE_DRAIN] Wrote 4 sectors, bytesUsed now=");
+                // Serial.println(rb.bytesUsed());
+            }
+        }
+    } else if (n >= 512 && !dataFile.isBusy()) {
+        // Debug: Log before writeOut
+        if (sdWriteCallCount % 20 == 0) {
+            // Serial.print("[RB_WRITEOUT_START] n=");
+            // Serial.print(n);
+            // Serial.print(" writeSize=512 filePos=");
+            // Serial.println(dataFile.curPosition());
+        }
+
+        // write out exactly 512 bytes from ring buffer into the file.
+        // writeOut returns number bytes written, or 0 on failure.
         size_t bytesWrittenToSD = rb.writeOut(512);
 
+        // Debug: Log after writeOut
+        if (sdWriteCallCount % 20 == 0) {
+            // Serial.print("[RB_WRITEOUT_END] bytesWritten=");
+            // Serial.print(bytesWrittenToSD);
+            // Serial.print(" newBytesUsed=");
+            // Serial.print(rb.bytesUsed());
+            // Serial.print(" filePos=");
+            // Serial.println(dataFile.curPosition());
+        }
+
         if (bytesWrittenToSD == 0) {
+            // Serial.print("[SD_FATAL_ERROR] At file position: ");
+            // Serial.println(dataFile.curPosition());
             // handle fatal: stop recording
             isRecording = false;
             sdInitialized = false;

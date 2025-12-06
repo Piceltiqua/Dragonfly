@@ -82,7 +82,13 @@ void EKF::predict(float dt) {
 }
 
 void EKF::updateGNSS() {
-    // 1) Build measurement vector z
+    Serial.println("\n===== EKF::updateGNSS() =====");
+    Serial.print("CURRENT TIME : ");
+    Serial.println(micros());
+
+    // ------------------------------------------------------------
+    // 1) Measurement vector z
+    // ------------------------------------------------------------
     Matrix<float, N_GNSS, 1> z;
     z << gnssData_.posN,
         gnssData_.posE,
@@ -91,8 +97,25 @@ void EKF::updateGNSS() {
         gnssData_.velE,
         gnssData_.velD;
 
+    Serial.println("state (before update):");
+    for (int i = 0; i < N_GNSS; i++) {
+        Serial.print(state(i, 0), 6);
+        Serial.print(" ");
+    }
+    Serial.println("\n");
+
+    Serial.println("z (measurement vector):");
+    for (int i = 0; i < N_GNSS; i++) {
+        Serial.print(z(i, 0), 6);
+        Serial.print(" ");
+    }
+    Serial.println("\n");
+
+    // ------------------------------------------------------------
     // 2) Measurement covariance R
+    // ------------------------------------------------------------
     Matrix<float, N_GNSS, N_GNSS> R = Matrix<float, N_GNSS, N_GNSS>::Zero();
+
     R(0, 0) = gnssData_.horAcc * gnssData_.horAcc + s_r2;
     R(1, 1) = gnssData_.horAcc * gnssData_.horAcc + s_r2;
     R(2, 2) = gnssData_.vertAcc * gnssData_.vertAcc;
@@ -100,29 +123,114 @@ void EKF::updateGNSS() {
     R(4, 4) = s_v2;
     R(5, 5) = s_v2;
 
-    // 3) Innovation y = z − x
+    Serial.println("R (measurement covariance):");
+    for (int r = 0; r < N_GNSS; r++) {
+        for (int c = 0; c < N_GNSS; c++) {
+            Serial.print(R(r, c), 6);
+            Serial.print(" ");
+        }
+        Serial.println();
+    }
+    Serial.println();
+
+    // ------------------------------------------------------------
+    // 3) Innovation y = z − state
+    // ------------------------------------------------------------
+    Serial.println("state (before update):");
+    for (int r = 0; r < N_STATE; r++) {
+        Serial.print(state(r, 0), 6);
+        Serial.print(" ");
+    }
+    Serial.println("\n");
+
     Matrix<float, N_GNSS, 1> y = z - state;
 
-    // 4) Innovation covariance S
+    Serial.println("y (innovation):");
+    for (int i = 0; i < N_GNSS; i++) {
+        Serial.print(y(i, 0), 6);
+        Serial.print(" ");
+    }
+    Serial.println("\n");
+
+    // ------------------------------------------------------------
+    // 4) Innovation covariance S = P + R
+    // ------------------------------------------------------------
+    Serial.println("P (before update):");
+    for (int r = 0; r < N_STATE; r++) {
+        for (int c = 0; c < N_STATE; c++) {
+            Serial.print(P(r, c), 6);
+            Serial.print(" ");
+        }
+        Serial.println();
+    }
+    Serial.println();
+
     Matrix<float, N_GNSS, N_GNSS> S = P + R;
 
-    // 5) Kalman gain K
+    Serial.println("S (innovation covariance):");
+    for (int r = 0; r < N_GNSS; r++) {
+        for (int c = 0; c < N_GNSS; c++) {
+            Serial.print(S(r, c), 6);
+            Serial.print(" ");
+        }
+        Serial.println();
+    }
+    Serial.println();
+
+    // ------------------------------------------------------------
+    // 5) Kalman gain K = P * S.inverse()
+    // ------------------------------------------------------------
     Matrix<float, N_STATE, N_GNSS> K = P * S.inverse();
 
+    Serial.println("K (Kalman gain):");
+    for (int r = 0; r < N_STATE; r++) {
+        for (int c = 0; c < N_GNSS; c++) {
+            Serial.print(K(r, c), 6);
+            Serial.print(" ");
+        }
+        Serial.println();
+    }
+    Serial.println();
+
+    // ------------------------------------------------------------
     // 6) State update
+    // ------------------------------------------------------------
     state = state + K * y;
 
-    // 7) Covariance update
+    Serial.println("state (after update):");
+    for (int r = 0; r < N_STATE; r++) {
+        Serial.print(state(r, 0), 6);
+        Serial.print(" ");
+    }
+    Serial.println("\n");
+
+    // ------------------------------------------------------------
+    // 7) Covariance update: P = (I − K) * P
+    // ------------------------------------------------------------
     Matrix<float, N_STATE, N_STATE> I = Matrix<float, N_STATE, N_STATE>::Identity();
     P = (I - K) * P;
 
-    // 8) Update external output struct
+    Serial.println("P (after update):");
+    for (int r = 0; r < N_STATE; r++) {
+        for (int c = 0; c < N_STATE; c++) {
+            Serial.print(P(r, c), 6);
+            Serial.print(" ");
+        }
+        Serial.println();
+    }
+    Serial.println();
+
+    // ------------------------------------------------------------
+    // 8) Export to posvel_
+    // ------------------------------------------------------------
     posvel_.posN = state(0, 0);
     posvel_.posE = state(1, 0);
     posvel_.posD = state(2, 0);
     posvel_.velN = state(3, 0);
     posvel_.velE = state(4, 0);
     posvel_.velD = state(5, 0);
+
+    Serial.println("===== END EKF::updateGNSS() =====\n");
 
     // Store snapshot for updateGNSS logging
     for (int i = 0; i < 6; ++i) {
