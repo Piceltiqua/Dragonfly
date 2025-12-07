@@ -79,6 +79,21 @@ void EKF::predict(float dt) {
             last_snapshot_.P_upper[idx++] = P(i, j);
         }
     }
+
+    // 6) Store state snapshot for potential rollback
+    EkfStateSnapshot snapshot;
+    snapshot.t_us = micros();
+    for (int i = 0; i < 6; ++i) {
+        snapshot.state[i] = state(i, 0);
+    }
+    for (int i = 0; i < 6; ++i) {
+        for (int j = 0; j < 6; ++j) {
+            snapshot.P[i * 6 + j] = P(i, j);
+        }
+    }
+    ekf_state_buf.push_back(snapshot);
+
+    while (ekf_state_buf.size() > 300) ekf_state_buf.pop_front();  // Keep 300 samples (~1.2 seconds at 250Hz)
 }
 
 void EKF::updateGNSS() {
@@ -276,4 +291,144 @@ MatrixXf EKF::computeQ(float dt) {
     Q.block<3, 3>(3, 3) = Matrix3f::Identity() * q_vv;
 
     return Q;
+}
+
+bool EKF::rollbackToTime(uint32_t target_time_us) {
+    // Find two snapshots bracketing the target time
+    if (ekf_state_buf.size() < 2) {
+        Serial.println("EKF::rollbackToTime(): insufficient state history");
+        return false;
+    }
+
+    // Find the index of the earlier snapshot
+    size_t i = 0;
+    while (i + 1 < ekf_state_buf.size() && ekf_state_buf[i + 1].t_us < target_time_us) {
+        ++i;
+    }
+
+    if (i + 1 >= ekf_state_buf.size()) {
+        Serial.println("EKF::rollbackToTime(): target time too recent");
+        return false;
+    }
+
+    const EkfStateSnapshot& before = ekf_state_buf[i];
+    const EkfStateSnapshot& after = ekf_state_buf[i + 1];
+
+    if (target_time_us < before.t_us || target_time_us > after.t_us) {
+        Serial.println("EKF::rollbackToTime(): target time out of range");
+        return false;
+    }
+
+    // Compute interpolation factor
+    double dt_total = double(after.t_us - before.t_us);
+    if (dt_total <= 0.0) {
+        Serial.println("EKF::rollbackToTime(): invalid time interval");
+        return false;
+    }
+    double alpha = double(target_time_us - before.t_us) / dt_total;
+
+    // Interpolate state vector
+    for (int i = 0; i < 6; ++i) {
+        state(i, 0) = (1.0 - alpha) * before.state[i] + alpha * after.state[i];
+    }
+
+    // Interpolate covariance matrix
+    for (int i = 0; i < 6; ++i) {
+        for (int j = 0; j < 6; ++j) {
+            P(i, j) = (1.0 - alpha) * before.P[i * 6 + j] + alpha * after.P[i * 6 + j];
+        }
+    }
+
+    return true;
+}
+
+void EKF::replayPredictSteps(uint32_t start_time_us, uint32_t end_time_us) {
+    // Replay predict steps from start_time_us to end_time_us using buffered acceleration
+
+    if (imu_acc_buf.empty()) {
+        Serial.println("EKF::replayPredictSteps(): no acceleration data available");
+        return;
+    }
+
+    // Find all acceleration samples between start and end times
+    for (size_t i = 0; i < imu_acc_buf.size(); ++i) {
+        uint32_t t_current = imu_acc_buf[i].t_us;
+
+        // Skip samples before start time
+        if (t_current <= start_time_us) continue;
+
+        // Stop when we reach end time
+        if (t_current > end_time_us) break;
+
+        // Compute dt
+        uint32_t t_prev = (i > 0) ? imu_acc_buf[i - 1].t_us : start_time_us;
+        if (t_prev < start_time_us) t_prev = start_time_us;
+        float dt = float(t_current - t_prev) * 1e-6f;  // Convert to seconds
+
+        if (dt <= 0.0f || dt > 0.1f) continue;  // Skip invalid dt
+
+        // Get acceleration for this step
+        Eigen::Vector3f acc = imu_acc_buf[i].acc_ned;
+
+        // Apply predict step (kinematic update only, no covariance update here)
+        Vector3f pos = state.block<3, 1>(0, 0);
+        Vector3f vel = state.block<3, 1>(3, 0);
+
+        pos = pos + vel * dt + 0.5f * acc * dt * dt;
+        vel = vel + acc * dt;
+
+        state.block<3, 1>(0, 0) = pos;
+        state.block<3, 1>(3, 0) = vel;
+
+        // Build state transition matrix
+        Matrix<float, N_STATE, N_STATE> F_mat = Matrix<float, N_STATE, N_STATE>::Identity();
+        F_mat.block<3, 3>(0, 3) = Matrix3f::Identity() * dt;
+
+        // Compute process noise for this dt
+        MatrixXf Q = computeQ(dt);
+
+        // Update covariance
+        P = F_mat * P * F_mat.transpose() + Q;
+    }
+
+    // Update external output struct with final replayed state
+    posvel_.posN = state(0, 0);
+    posvel_.posE = state(1, 0);
+    posvel_.posD = state(2, 0);
+    posvel_.velN = state(3, 0);
+    posvel_.velE = state(4, 0);
+    posvel_.velD = state(5, 0);
+}
+
+void EKF::updateGNSSWithDelay(uint32_t measurement_time_us) {
+    // Perform delayed measurement update with rollback and replay
+    // This corrects for the 130ms GNSS latency
+
+    uint32_t current_time_us = micros();
+
+    Serial.println("\n===== EKF::updateGNSSWithDelay() =====");
+    Serial.print("Current time: ");
+    Serial.print(current_time_us);
+    Serial.print(" us, Measurement time: ");
+    Serial.print(measurement_time_us);
+    Serial.println(" us");
+
+    // Step 1: Rollback to measurement time
+    if (!rollbackToTime(measurement_time_us)) {
+        Serial.println("WARNING: Rollback failed, skipping GNSS update");
+        return;
+    }
+
+    Serial.println("Rollback successful");
+
+    // Step 2: Apply measurement update at the past time
+    updateGNSS();
+
+    Serial.println("Measurement update applied");
+
+    // Step 3: Replay predict steps to return to current time
+    replayPredictSteps(measurement_time_us, current_time_us);
+
+    Serial.println("Replay complete");
+    Serial.println("===== END EKF::updateGNSSWithDelay() =====\n");
 }

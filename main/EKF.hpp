@@ -39,7 +39,11 @@ public:
     void setup();
     void predict(float dt);
     void updateGNSS();
+    void updateGNSSWithDelay(uint32_t measurement_time_us);
     const EkfSnapshot& getLastSnapshot() const { return last_snapshot_; }
+
+    bool rollbackToTime(uint32_t target_time_us);
+    void replayPredictSteps(uint32_t start_time_us, uint32_t end_time_us);
 
 private:
     MatrixXf computeQ(float dt);
@@ -52,6 +56,8 @@ private:
     MatrixXf P;
 
     EkfSnapshot last_snapshot_;
+
+    std::deque<EkfStateSnapshot> ekf_state_buf;  // Historical states for rollback (~1.2 sec at 250Hz)
 
     // Noise standard deviations
     float sigma_a = 0.35f;  // accelerometer noise: 0.35m/s²

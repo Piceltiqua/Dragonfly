@@ -50,9 +50,16 @@ void FlightController::readSensors() {
         battery.readCurrent();
         battery.integrateCurrentDraw();
 
+        // Always predict before processing GNSS
+        if (gnssData.fixType == 6) {
+            ekf.predict((micros() - IMU_previous_predict) / 1000000.0f);
+            IMU_previous_predict = micros();
+        }
+
+        // Process GNSS reading with delayed correction
         if (gnss.read()) {
             if (gnssData.fixType == 6) {
-                ekf.updateGNSS();
+                ekf.updateGNSSWithDelay(gnss.getMeasurementTime());
             }
         }
 
@@ -62,11 +69,6 @@ void FlightController::readSensors() {
         } else if (!SD.mediaPresent()) {
             isRecording = false;    // stop recording if SD removed
             sdInitialized = false;  // force re-init on next start
-        }
-
-        if (gnssData.fixType == 6) {
-            ekf.predict((micros() - IMU_previous_predict) / 1000000.0f);
-            IMU_previous_predict = micros();
         }
     }
 

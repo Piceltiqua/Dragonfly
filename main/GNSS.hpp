@@ -33,6 +33,7 @@ public:
     String getDateFilename();
     void setReference(double lat0, double lon0, double alt0);
     const GnssSnapshot& getLastSnapshot() const { return last_snapshot_; }
+    uint32_t getMeasurementTime() const { return t_GNSS_read_us; }
 
 private:
     static constexpr double a = 6378137.0;
