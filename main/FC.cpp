@@ -3,7 +3,6 @@
 FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(attitude, gnssData),
-      ekf(posvel, imuAcc, gnssData),
       battery(batteryStatus)
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, targetAttitude, waypoints)
@@ -16,8 +15,6 @@ void FlightController::setup() {
     delay(100);
     command.setup();
     delay(100);
-    ekf.setup();
-    delay(100);
     battery.setup();
     delay(100);
     initializeSD();
@@ -27,7 +24,6 @@ void FlightController::setup() {
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
     Serial1.addMemoryForWrite(extra_tx_mem, sizeof(extra_tx_mem));
     delay(1000);
-    IMU_previous_predict = micros();
 }
 
 void FlightController::readSensors() {
@@ -50,18 +46,7 @@ void FlightController::readSensors() {
         battery.readCurrent();
         battery.integrateCurrentDraw();
 
-        // Always predict before processing GNSS
-        if (gnssData.fixType == 6) {
-            ekf.predict((micros() - IMU_previous_predict) / 1000000.0f);
-            IMU_previous_predict = micros();
-        }
-
-        // Process GNSS reading with delayed correction
-        if (gnss.read()) {
-            if (gnssData.fixType == 6) {
-                ekf.updateGNSSWithDelay(gnss.getMeasurementTime());
-            }
-        }
+        gnss.read();
 
         if (isRecording && SD.mediaPresent()) {
             writeToRingBuffer();
@@ -131,7 +116,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             break;
 
         case MSG_ORIG:
-            ekf.setup();
             gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
             posvel.posN = 0.0f;
             posvel.posE = 0.0f;
@@ -582,18 +566,17 @@ void FlightController::writeToRingBuffer() {
     rowCounter++;
 
     // Get snapshots from all components
-    const EkfSnapshot& ekfSnap = ekf.getLastSnapshot();
     const GnssSnapshot& gnssSnap = gnss.getLastSnapshot();
     const ImuSnapshot& imuSnap = imu.getLastSnapshot();
 
     // Pack into CSV format using snprintf
     // Buffer must be large enough to hold the entire CSV line without truncation
-    char line[5120];  // Increased to accommodate ~2500+ byte lines with safety margin
+    char line[2048];  // Reduced size since EKF data is removed
     size_t len = Logging::packSnapshotCsv(line, sizeof(line),
                                           (uint32_t)micros(),
                                           posvel, attitude, imuAcc, gnssData,
                                           batteryStatus, actuators,
-                                          ekfSnap, gnssSnap, imuSnap);
+                                          gnssSnap, imuSnap);
 
     // Check for errors: packSnapshotCsv returns 0 on failure or if truncated
     if (len <= 0 || len >= sizeof(line) - 1) {

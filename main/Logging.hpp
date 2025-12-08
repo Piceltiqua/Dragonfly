@@ -5,7 +5,6 @@
 
 #include <cstdint>
 
-#include "EKF.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
 
@@ -29,56 +28,7 @@ public:
         header += "GNSS_HorAcc_m,GNSS_VertAcc_m,numSV,FixType,";
         header += "CurrentDraw_mA,CurrentConsumed_mAh,BatteryVoltage_V,BatteryLevel_percent,";
         header += "Motor1Throttle_percent,Motor2Throttle_percent,";
-        header += "LegsPosition_servo,GimbalX_deg,GimbalY_deg,";
-
-        // New intermediate variable fields
-        // EKF predict fields
-        header += ",EKF_pos_N,EKF_pos_E,EKF_pos_D";
-        header += ",EKF_vel_N,EKF_vel_E,EKF_vel_D";
-        header += ",EKF_F_0_0,EKF_F_0_1,EKF_F_0_2,EKF_F_0_3,EKF_F_0_4,EKF_F_0_5";
-        header += ",EKF_F_1_1,EKF_F_1_2,EKF_F_1_3,EKF_F_1_4,EKF_F_1_5";
-        header += ",EKF_F_2_2,EKF_F_2_3,EKF_F_2_4,EKF_F_2_5";
-        header += ",EKF_F_3_3,EKF_F_3_4,EKF_F_3_5";
-        header += ",EKF_F_4_4,EKF_F_4_5";
-        header += ",EKF_F_5_5";
-
-        header += ",EKF_Q_0_0,EKF_Q_0_1,EKF_Q_0_2,EKF_Q_0_3,EKF_Q_0_4,EKF_Q_0_5";
-        header += ",EKF_Q_1_1,EKF_Q_1_2,EKF_Q_1_3,EKF_Q_1_4,EKF_Q_1_5";
-        header += ",EKF_Q_2_2,EKF_Q_2_3,EKF_Q_2_4,EKF_Q_2_5";
-        header += ",EKF_Q_3_3,EKF_Q_3_4,EKF_Q_3_5";
-        header += ",EKF_Q_4_4,EKF_Q_4_5";
-        header += ",EKF_Q_5_5";
-
-        header += ",EKF_P_0_0,EKF_P_0_1,EKF_P_0_2,EKF_P_0_3,EKF_P_0_4,EKF_P_0_5";
-        header += ",EKF_P_1_1,EKF_P_1_2,EKF_P_1_3,EKF_P_1_4,EKF_P_1_5";
-        header += ",EKF_P_2_2,EKF_P_2_3,EKF_P_2_4,EKF_P_2_5";
-        header += ",EKF_P_3_3,EKF_P_3_4,EKF_P_3_5";
-        header += ",EKF_P_4_4,EKF_P_4_5";
-        header += ",EKF_P_5_5";
-
-        // EKF updateGNSS fields
-        header += ",EKF_y_0,EKF_y_1,EKF_y_2,EKF_y_3,EKF_y_4,EKF_y_5";
-
-        header += ",EKF_S_0_0,EKF_S_0_1,EKF_S_0_2,EKF_S_0_3,EKF_S_0_4,EKF_S_0_5";
-        header += ",EKF_S_1_1,EKF_S_1_2,EKF_S_1_3,EKF_S_1_4,EKF_S_1_5";
-        header += ",EKF_S_2_2,EKF_S_2_3,EKF_S_2_4,EKF_S_2_5";
-        header += ",EKF_S_3_3,EKF_S_3_4,EKF_S_3_5";
-        header += ",EKF_S_4_4,EKF_S_4_5";
-        header += ",EKF_S_5_5";
-
-        header += ",EKF_K_0_0,EKF_K_0_1,EKF_K_0_2,EKF_K_0_3,EKF_K_0_4,EKF_K_0_5";
-        header += ",EKF_K_1_0,EKF_K_1_1,EKF_K_1_2,EKF_K_1_3,EKF_K_1_4,EKF_K_1_5";
-        header += ",EKF_K_2_0,EKF_K_2_1,EKF_K_2_2,EKF_K_2_3,EKF_K_2_4,EKF_K_2_5";
-        header += ",EKF_K_3_0,EKF_K_3_1,EKF_K_3_2,EKF_K_3_3,EKF_K_3_4,EKF_K_3_5";
-        header += ",EKF_K_4_0,EKF_K_4_1,EKF_K_4_2,EKF_K_4_3,EKF_K_4_4,EKF_K_4_5";
-        header += ",EKF_K_5_0,EKF_K_5_1,EKF_K_5_2,EKF_K_5_3,EKF_K_5_4,EKF_K_5_5";
-
-        header += ",EKF_I_0_0,EKF_I_0_1,EKF_I_0_2,EKF_I_0_3,EKF_I_0_4,EKF_I_0_5";
-        header += ",EKF_I_1_1,EKF_I_1_2,EKF_I_1_3,EKF_I_1_4,EKF_I_1_5";
-        header += ",EKF_I_2_2,EKF_I_2_3,EKF_I_2_4,EKF_I_2_5";
-        header += ",EKF_I_3_3,EKF_I_3_4,EKF_I_3_5";
-        header += ",EKF_I_4_4,EKF_I_4_5";
-        header += ",EKF_I_5_5";
+        header += "LegsPosition_servo,GimbalX_deg,GimbalY_deg";
 
         // GNSS position fields
         header += ",GNSS_r_ant_ned_x,GNSS_r_ant_ned_y,GNSS_r_ant_ned_z";
@@ -115,7 +65,6 @@ public:
                                   const GNSSData& gnssData,
                                   const BatteryStatus& batteryStatus,
                                   const ActuatorCommands& actuators,
-                                  const EkfSnapshot& ekf,
                                   const GnssSnapshot& gnss,
                                   const ImuSnapshot& imu) {
         int n = 0;
@@ -134,7 +83,7 @@ public:
                        "%.4f,%.4f,"                           // GNSS horAcc, vertAcc
                        "%u,%u,"                               // numSV (uint8_t), fixType (uint8_t)
                        "%u,%d,%u,%u,"                         // battery currentDraw, currentConsumed, batteryVoltage, batteryLevel
-                       "%d,%d,%u,%d,%d,",                     // actuators motor1, motor2, legs, gimbalX, gimbalY
+                       "%d,%d,%u,%d,%d",                      // actuators motor1, motor2, legs, gimbalX, gimbalY
                        (unsigned long)time_us,
                        posvel.posN, posvel.posE, posvel.posD,
                        posvel.velN, posvel.velE, posvel.velD,
@@ -162,109 +111,6 @@ public:
             return 0;
         }
         n += ret;
-
-        // New intermediate variable fields
-        // EKF predict fields
-        ret = snprintf(buf + n, bufSize - n, "%g,%g,%g,%g,%g,%g",
-                       ekf.pos_N, ekf.pos_E, ekf.pos_D,
-                       ekf.vel_N, ekf.vel_E, ekf.vel_D);
-        if (ret < 0 || n + ret >= (int)bufSize) {
-            Serial.print("[SNPRINTF_FAIL] Component=EKF_PREDICT ret=");
-            Serial.println(ret);
-            return 0;
-        }
-        n += ret;
-
-        // EKF F upper triangle
-        for (int i = 0; i < 21; ++i) {
-            ret = snprintf(buf + n, bufSize - n, ",%g", ekf.F_upper[i]);
-            if (ret < 0 || n + ret >= (int)bufSize) {
-                Serial.print("[SNPRINTF_FAIL] Component=EKF_F[");
-                Serial.print(i);
-                Serial.print("] ret=");
-                Serial.println(ret);
-                return 0;
-            }
-            n += ret;
-        }
-
-        // EKF Q upper triangle
-        for (int i = 0; i < 21; ++i) {
-            ret = snprintf(buf + n, bufSize - n, ",%g", ekf.Q_upper[i]);
-            if (ret < 0 || n + ret >= (int)bufSize) {
-                Serial.print("[SNPRINTF_FAIL] Component=EKF_Q[");
-                Serial.print(i);
-                Serial.print("] ret=");
-                Serial.println(ret);
-                return 0;
-            }
-            n += ret;
-        }
-
-        // EKF P upper triangle
-        for (int i = 0; i < 21; ++i) {
-            ret = snprintf(buf + n, bufSize - n, ",%g", ekf.P_upper[i]);
-            if (ret < 0 || n + ret >= (int)bufSize) {
-                Serial.print("[SNPRINTF_FAIL] Component=EKF_P[");
-                Serial.print(i);
-                Serial.print("] ret=");
-                Serial.println(ret);
-                return 0;
-            }
-            n += ret;
-        }
-
-        // EKF y vector
-        for (int i = 0; i < 6; ++i) {
-            ret = snprintf(buf + n, bufSize - n, ",%g", ekf.y[i]);
-            if (ret < 0 || n + ret >= (int)bufSize) {
-                Serial.print("[SNPRINTF_FAIL] Component=EKF_y[");
-                Serial.print(i);
-                Serial.print("] ret=");
-                Serial.println(ret);
-                return 0;
-            }
-            n += ret;
-        }
-
-        // EKF S upper triangle
-        for (int i = 0; i < 21; ++i) {
-            ret = snprintf(buf + n, bufSize - n, ",%g", ekf.S_upper[i]);
-            if (ret < 0 || n + ret >= (int)bufSize) {
-                Serial.print("[SNPRINTF_FAIL] Component=EKF_S[");
-                Serial.print(i);
-                Serial.print("] ret=");
-                Serial.println(ret);
-                return 0;
-            }
-            n += ret;
-        }
-
-        // EKF K full matrix (6x6 = 36 elements)
-        for (int i = 0; i < 36; ++i) {
-            ret = snprintf(buf + n, bufSize - n, ",%g", ekf.K[i]);
-            if (ret < 0 || n + ret >= (int)bufSize) {
-                Serial.print("[SNPRINTF_FAIL] Component=EKF_K[");
-                Serial.print(i);
-                Serial.print("] ret=");
-                Serial.println(ret);
-                return 0;
-            }
-            n += ret;
-        }
-
-        // EKF I upper triangle
-        for (int i = 0; i < 21; ++i) {
-            ret = snprintf(buf + n, bufSize - n, ",%g", ekf.I_upper[i]);
-            if (ret < 0 || n + ret >= (int)bufSize) {
-                Serial.print("[SNPRINTF_FAIL] Component=EKF_I[");
-                Serial.print(i);
-                Serial.print("] ret=");
-                Serial.println(ret);
-                return 0;
-            }
-            n += ret;
-        }
 
         // GNSS position fields
         ret = snprintf(buf + n, bufSize - n, ",%g,%g,%g,%g,%g,%g,%g,%g,%g",

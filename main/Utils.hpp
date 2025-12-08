@@ -111,20 +111,7 @@ struct ImuSample {
     Eigen::Vector3f r_ant_ned;  // Projection of (0,0,0.475) from CAD to NED frame
 };
 
-struct ImuAccSample {
-    uint32_t t_us;
-    Eigen::Vector3f acc_ned;  // Linear acceleration in NED frame (m/s²)
-};
-
-struct EkfStateSnapshot {
-    uint32_t t_us;
-    float state[6];  // [posN, posE, posD, velN, velE, velD]
-    float P[36];     // Covariance matrix (6x6 stored as flat array)
-};
-
 inline ImuSample newImuSample{0, Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero()};
-inline ImuAccSample newImuAccSample{0, Eigen::Vector3f::Zero()};
-inline std::deque<ImuSample> imu_buf;         // buffer to hold IMU samples for interpolation
-inline std::deque<ImuAccSample> imu_acc_buf;  // buffer to hold IMU acceleration for EKF replay
+inline std::deque<ImuSample> imu_buf;  // buffer to hold IMU samples for interpolation
 
 #endif

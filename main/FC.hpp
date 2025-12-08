@@ -6,7 +6,6 @@
 
 #include "Battery.hpp"
 #include "Command.hpp"
-#include "EKF.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
 #include "Logging.hpp"
@@ -66,13 +65,11 @@ private:
     IMU imu;
     GNSS gnss;
     Command command;
-    EKF ekf;
     Battery battery;
     // AttitudeController attCtrl;
     // PositionController posCtrl;
 
     elapsedMicros IMUTimer;
-    uint32_t IMU_previous_predict = 0;
     bool gnssReading;
     elapsedMicros telemTimer;
     float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight

@@ -36,7 +36,6 @@ public:
     void imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
                      float& ax_NED, float& ay_NED, float& az_NED);
     void pushImuSample();
-    void pushImuAccSample();
     const ImuSnapshot& getLastSnapshot() const { return last_snapshot_; }
 
 private:

@@ -27,7 +27,6 @@ void IMU::read() {
                     imuAcc_.accuracy_status = sensorValue.status;  // Calibration accuracy in the form of a number from 0 to 3
 
                     imuAccToNED(ax_IMU, ay_IMU, az_IMU, imuAcc_.ax_NED, imuAcc_.ay_NED, imuAcc_.az_NED);
-                    pushImuAccSample();
 
                     acc = true;
                 }
@@ -153,15 +152,4 @@ void IMU::pushImuSample() {
     last_snapshot_.omega_imu_y = omega_IMU.y();
     last_snapshot_.omega_imu_z = omega_IMU.z();
     last_snapshot_.t_us = newImuSample.t_us;
-}
-
-void IMU::pushImuAccSample() {
-    // Push the latest acceleration sample into the buffer for EKF replay
-
-    newImuAccSample.acc_ned = Eigen::Vector3f(imuAcc_.ax_NED, imuAcc_.ay_NED, imuAcc_.az_NED);
-    newImuAccSample.t_us = micros();
-
-    imu_acc_buf.push_back(newImuAccSample);
-
-    while (imu_acc_buf.size() > 300) imu_acc_buf.pop_front();  // Keep 300 samples (~1.2 seconds at 250Hz)
 }
