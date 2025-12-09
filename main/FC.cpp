@@ -6,6 +6,7 @@ FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(gnssData),
       ukf(posvel, attitude, imuAcc, gnssData),
+      
       attitudeCtrl()
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, targetAttitude, waypoints)
@@ -22,6 +23,7 @@ void FlightController::setup() {
     // Serial.begin(115200);
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
     delay(1000);
+    CalibrateAttitude();
 }
 
 void FlightController::readSensors() {
@@ -87,12 +89,12 @@ void FlightController::readSensors() {
         // Update battery level
     quaternionToEuler(attitude.qw, attitude.qi, attitude.qj, attitude.qk,
                           current_attitude.roll, current_attitude.pitch, current_attitude.yaw);
-    lqr_att.roll = current_attitude.roll;
-    lqr_att.pitch = current_attitude.pitch;
-    lqr_att.yaw = current_attitude.yaw;
-    lqr_rates.p = attitude.wx;
-    lqr_rates.q = attitude.wy;
-    lqr_rates.r = attitude.wz;
+    //lqr_att.roll = current_attitude.roll;
+    //lqr_att.pitch = current_attitude.pitch;
+    //lqr_att.yaw = current_attitude.yaw;
+    //lqr_rates.p = attitude.wx;
+    //lqr_rates.q = attitude.wy;
+    //lqr_rates.r = attitude.wz;
     Serial.print("Attitude en (rad): ");
     Serial.print(current_attitude.roll);
     Serial.print(", ");
@@ -100,12 +102,15 @@ void FlightController::readSensors() {
     Serial.print(", ");
     Serial.println(current_attitude.yaw);
     Serial.print("Angle en (deg): ");
-    Serial.print(current_attitude.roll * RAD_TO_DEG);
+    Serial.print(current_attitude.roll * RAD_TO_DEG - offset_roll * RAD_TO_DEG  );
     Serial.print(", ");
-    Serial.print(current_attitude.pitch * RAD_TO_DEG);
+    Serial.print(current_attitude.pitch * RAD_TO_DEG - offset_pitch * RAD_TO_DEG);
     Serial.print(", ");
     Serial.println(current_attitude.yaw * RAD_TO_DEG);
-    
+    Serial.print("offset (deg): ");
+    Serial.print(offset_roll * RAD_TO_DEG);
+    Serial.print(", ");
+    Serial.println(offset_pitch * RAD_TO_DEG);
     Serial.print("Quaternion: ");
     Serial.print(attitude.qw);
     Serial.print(", ");
@@ -114,8 +119,8 @@ void FlightController::readSensors() {
     Serial.print(attitude.qj);
     Serial.print(", ");
     Serial.println(attitude.qk);
-    //command.commandGimbal(0.0f, 0.0f);
-    AttitudeHold();
+    command.commandGimbal(0.0f, 0.0f);
+    //AttitudeHold();
     //command.commandMotors(0,0);
     }
 
@@ -545,9 +550,7 @@ void FlightController::sendTelemetry() {
 
 
 
-static inline float clampf(float v, float lo, float hi) {
-    return (v < lo) ? lo : (v > hi) ? hi : v;
-}
+
 void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
                                          float &roll, float &pitch, float &yaw) {
   
@@ -559,7 +562,7 @@ void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
 
     float sinr_cosp = 2.0f * (qw * qx + qy * qz);
     float cosr_cosp = 1.0f - 2.0f * (qx * qx + qy * qy);
-    roll = std::atan2(sinr_cosp, cosr_cosp) +90.0f * DEG_TO_RAD;  
+    roll = std::atan2(sinr_cosp, cosr_cosp) +90.0f * DEG_TO_RAD;  // for the moment we add 90 deg to have the good reference
 
     float sinp = 2.0f * (qw * qy - qz * qx);
 
@@ -575,15 +578,41 @@ void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
     
 }
 
+void FlightController::CalibrateAttitude() {
+    Serial.print("Calibration mode: Hold rocket level for few seconds...\n");
+    command.setLedColor(1, 1, 0); 
+    float sum_roll = 0.0f;
+    float sum_pitch = 0.0f;
+    const int num_samples = 100;
+
+    for (int i = 0; i < num_samples; ++i) {
+        imu.read();
+        float roll, pitch, yaw;
+        quaternionToEuler(attitude.qw, attitude.qi, attitude.qj, attitude.qk,
+                          roll, pitch, yaw);
+        sum_roll += roll;
+        sum_pitch += pitch;
+        delay(2); 
+    }
+    offset_roll = sum_roll / num_samples;
+    offset_pitch = sum_pitch / num_samples;
+    Serial.print("Calibration complete. Offsets - Roll: ");
+    Serial.print(offset_roll * RAD_TO_DEG);
+    Serial.print(" deg, Pitch: ");
+    Serial.print(offset_pitch * RAD_TO_DEG);
+    Serial.print(" deg\n");
+    command.setLedColor(0, 1, 0);
+}
+
+
 void FlightController::AttitudeHold() {
+    
     float lqr_thrust = 15.0f;     
     float lqr_moment_arm = 0.108f; 
 
     
     lqr_att.pitch = current_attitude.pitch;
-    
-    
-    
+
     lqr_att.yaw = current_attitude.roll; 
 
     lqr_rates.q = attitude.wy; 
@@ -595,9 +624,9 @@ void FlightController::AttitudeHold() {
     attitudeCtrl.compute(lqr_att, lqr_rates, lqr_thrust, lqr_moment_arm, lqr_sp, lqr_out);
 
     
-    actuators.servoXAngle = -lqr_out.pitchOutput * RAD_TO_DEG; 
+    actuators.servoXAngle = lqr_out.pitchOutput * RAD_TO_DEG; 
     
-    actuators.servoYAngle = -lqr_out.yawOutput * RAD_TO_DEG;
+    actuators.servoYAngle = lqr_out.yawOutput * RAD_TO_DEG;
 
     command.commandGimbal(actuators.servoXAngle, actuators.servoYAngle);
     

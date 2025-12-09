@@ -41,8 +41,8 @@ void LQR_attitude::compute(const Attitude_angle& attitude, const rotationspeed& 
 
     
     if (thrust > 0.001f) { 
-        ctrlOutput.pitchOutput = -torque_x / (thrust * moment_arm);
-        ctrlOutput.yawOutput = torque_y / (thrust * moment_arm);
+        ctrlOutput.pitchOutput = torque_x / (thrust * moment_arm);
+        ctrlOutput.yawOutput = -torque_y / (thrust * moment_arm);
     } else {
         ctrlOutput.pitchOutput = 0.0f;
         ctrlOutput.yawOutput = 0.0f;

@@ -77,9 +77,13 @@ private:
     bool escapeNext = false;
     uint8_t frameBuf[MAX_FRAME_BUFFER];
     size_t frameBufLen = 0;
+    float offset_roll = 0.0f;
+    float offset_pitch = 0.0f;
+
     //conversion quaternion to euler angles
     void quaternionToEuler(float qw, float qi, float qj, float qk,
                            float &roll, float &pitch, float &yaw);
+    void CalibrateAttitude();
     // Telemetry functions
     void processIncomingByte(uint8_t b);  // Read incoming data
     void sendTelemetry();
