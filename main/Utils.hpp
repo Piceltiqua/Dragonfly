@@ -9,6 +9,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <deque>
+#include <eigen.h>
 
 static constexpr uint8_t STX = 0x7E;
 static constexpr uint8_t DLE = 0x7D;
@@ -103,6 +104,37 @@ struct ActuatorCommands {
     uint8_t legsPosition = LEGS_DEPLOYED;  // 0xA9: retracted, 0x9D: deployed
     int16_t servoXAngle = 0;
     int16_t servoYAngle = 0;
+};
+
+struct Attitude_angle {
+    float roll;   // Roll
+    float pitch; // Pitch
+    float yaw;   // Yaw
+};
+
+struct rotationspeed {
+    float p;
+    float q;
+    float r;
+};
+
+struct AttitudeSetpoint {
+    float roll;
+    float pitch;
+    float yaw;
+};
+
+struct ControlOutput_attitude {
+    float rollOutput;
+    float pitchOutput;  // Torque X
+    float yawOutput; // Torque Y
+};
+
+struct ControlOutput {
+    float rollOutput;
+    float pitchOutput;
+    float yawOutput;
+    float thrust;
 };
 
 struct ImuSample {
