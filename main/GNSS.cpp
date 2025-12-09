@@ -139,6 +139,13 @@ bool GNSS::interpolateIMUSample() {
 }
 
 String GNSS::getDateFilename() {
-    String filename = String(ubx.utc_year()) + String("_") + String(ubx.utc_month()) + String("_") + String(ubx.utc_day()) + String("_") + String(ubx.utc_hour()) + String("-") + String(ubx.utc_min()) + String("-") + String(ubx.utc_sec()) + String(".txt");
+    String filename;
+    if (gnssData_.fixType < 4) {
+        // No valid fix, return default filename
+        filename = String("NO_FIX_LOG_") + String(micros()) + String(".txt");
+    } else {
+        // Valid fix, use date and time from GNSS
+        filename = String(ubx.utc_year()) + String("_") + String(ubx.utc_month()) + String("_") + String(ubx.utc_day()) + String("_") + String(ubx.utc_hour()) + String("-") + String(ubx.utc_min()) + String("-") + String(ubx.utc_sec()) + String(".txt");
+    }
     return filename;
 }

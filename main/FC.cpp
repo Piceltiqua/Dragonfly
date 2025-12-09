@@ -510,7 +510,7 @@ void FlightController::handleRecordingMessage(uint8_t rec) {
             }
 
             // If SD initialized and GNSS has a good fix, open file
-            if (sdInitialized && gnssData.fixType >= 5) {
+            if (sdInitialized) {
                 filename = gnss.getDateFilename();
                 dataFile = SD.sdfs.open(filename.c_str(), O_WRITE | O_CREAT);
                 if (!dataFile.isOpen()) {
