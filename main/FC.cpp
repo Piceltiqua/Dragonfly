@@ -40,13 +40,26 @@ void FlightController::readSensors() {
 
         IMUTimer -= IMU_PERIOD_US;
         flightTimeSeconds = (float)millis() / 1000.0f;
+
+        // uint32_t t0_imuread = micros();
         imu.read();
+        // Serial.print("IMU read time (us): ");
+        // Serial.println(micros() - t0_imuread);
 
         battery.readVoltage();
         battery.readCurrent();
         battery.integrateCurrentDraw();
 
-        gnss.read();
+        if (gnss.read()) {
+            if (gnssData.fixType == 6) {
+                posvel.posN = gnssData.posN;
+                posvel.posE = gnssData.posE;
+                posvel.posD = gnssData.posD;
+                posvel.velN = gnssData.velN;
+                posvel.velE = gnssData.velE;
+                posvel.velD = gnssData.velD;
+            }
+        }
 
         if (isRecording && SD.mediaPresent()) {
             writeToRingBuffer();
@@ -131,13 +144,16 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             if (payloadLen >= 3) {
                 uint8_t m1 = payload[1];  // throttle (%)
                 uint8_t m2 = payload[2];
-                command.commandMotors(m1, m2);
+                // command.commandMotorsPercent(m1, m2);
+                float thrust1 = map(m1, 0, 100, 0, 2060);
+                float thrust2 = map(m2, 0, 100, 0, 2060);
+                command.commandMotorsThrust(thrust1, thrust2);
                 command.setLedColor(1, 1, 0);
             }
             break;
 
         case MSG_STOP:
-            command.commandMotors(0, 0);  // stop motors immediately
+            command.commandMotorsPercent(0, 0);  // stop motors immediately
             command.setLedColor(1, 1, 1);
             break;
 

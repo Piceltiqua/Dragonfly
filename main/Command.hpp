@@ -10,12 +10,14 @@ public:
     Command() {}
     void setup();
     void commandGimbal(float angleX, float angleY);
-    void commandMotors(int throttleMotor1, int throttleMotor2);
+    void commandMotorsPercent(int throttleMotor1, int throttleMotor2);
+    void commandMotorsThrust(float thrustMotor1, float thrustMotor2);
     void extendLegs();
     void retractLegs();
     void setLedColor(bool red, bool green, bool blue);
 
 private:
+    int thrustToTiming(float thrust_gram);
     Servo leg1;
     Servo leg2;
     Servo leg3;
