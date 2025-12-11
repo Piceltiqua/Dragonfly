@@ -48,12 +48,13 @@ void Command::commandGimbal(float gimbalAngleX, float gimbalAngleY) {
 
   gimbalX.writeMicroseconds(timingX);
   gimbalY.writeMicroseconds(timingY);
-
+  /*
   Serial.print("Commanded servo X with ");
   Serial.print(timingX);
   Serial.print("us and servo Y with ");
   Serial.print(timingY);
   Serial.println("us");
+  */
 }
 
 void Command::commandMotorsPercent(int throttleMotor1, int throttleMotor2) {

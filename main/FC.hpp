@@ -88,6 +88,9 @@ private:
     rotationspeed lqr_rates;
     AttitudeSetpoint lqr_sp;
     ControlOutput_attitude lqr_out;
+    ControlOutput ctrlOutput;  // stores latest thrust command from ground
+    bool AttitudeControlled = false;
+    bool PositionControlled = false;
     // Telemetry constants
     bool isRecording = false;
     bool inFrame = false;

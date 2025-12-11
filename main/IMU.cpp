@@ -53,9 +53,9 @@ void IMU::read() {
 
             case SH2_GYROSCOPE_CALIBRATED:
                 if (!gyro) {
-                    attitude_.wx = sensorValue.un.gyroscope.x;
-                    attitude_.wy = sensorValue.un.gyroscope.y;
-                    attitude_.wz = sensorValue.un.gyroscope.z;
+                    attitude_.wx = -sensorValue.un.gyroscope.y;
+                    attitude_.wy = sensorValue.un.gyroscope.z;
+                    attitude_.wz = -sensorValue.un.gyroscope.x;
 
                     gyro = true;
                 }

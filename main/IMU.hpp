@@ -41,7 +41,6 @@ public:
 private:
     Adafruit_BNO08x bno08x_{Serial4};
     sh2_SensorValue_t sensorValue;
-
     IMUAcceleration& imuAcc_;
     Attitude& attitude_;
 
