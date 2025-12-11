@@ -132,7 +132,7 @@ bool GNSS::interpolateIMUSample() {
     double alpha = double(t_GNSS_read_us - sampleBefore.t_us) / dtAB;
 
     // linear interpolate omega_ned and r_ant_ned
-    omega_ned_interp = (1.0 - alpha) * sampleBefore.omega_ned + alpha * sampleAfter.omega_ned;
+    omega_ned_interp = (1.0 - alpha) * sampleBefore.omega_NED + alpha * sampleAfter.omega_NED;
     r_ant_ned_interp = (1.0 - alpha) * sampleBefore.r_ant_ned + alpha * sampleAfter.r_ant_ned;
 
     return true;

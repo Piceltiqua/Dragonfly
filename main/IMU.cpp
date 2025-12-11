@@ -53,9 +53,19 @@ void IMU::read() {
 
             case SH2_GYROSCOPE_CALIBRATED:
                 if (!gyro) {
-                    attitude_.wx = -sensorValue.un.gyroscope.y;
-                    attitude_.wy = sensorValue.un.gyroscope.z;
-                    attitude_.wz = -sensorValue.un.gyroscope.x;
+                    float wx_IMU = sensorValue.un.gyroscope.x;
+                    float wy_IMU = sensorValue.un.gyroscope.y;
+                    float wz_IMU = sensorValue.un.gyroscope.z;
+
+                    // IMU angular rates in IMU frame
+                    omega_IMU = Eigen::Vector3f(wx_IMU, wy_IMU, wz_IMU);
+
+                    // Angular rates in CAD frame
+                    omega_CAD = q_cad_to_imu.conjugate() * omega_IMU;
+
+                    attitude_.wx = omega_CAD.x();
+                    attitude_.wy = omega_CAD.y();
+                    attitude_.wz = omega_CAD.z();
 
                     gyro = true;
                 }
@@ -129,14 +139,8 @@ void IMU::imuAccToNED(float ax_IMU, float ay_IMU, float az_IMU,
 void IMU::pushImuSample() {
     // Push the latest IMU sample into the buffer for interpolation use in GNSS velocity correction
 
-    // IMU angular rates in IMU frame
-    Eigen::Vector3f omega_IMU(attitude_.wx, attitude_.wy, attitude_.wz);
-
-    // Angular rates in CAD frame
-    Eigen::Vector3f omega_cad = q_cad_to_imu.conjugate() * omega_IMU;
-
     // Angular rates in NED frame
-    newImuSample.omega_ned = q_cad_to_ned * omega_cad;
+    newImuSample.omega_NED = q_cad_to_ned * omega_CAD;
 
     // Antenna position in NED frame
     newImuSample.r_ant_ned = q_cad_to_ned * r_ant_cad;

@@ -7,7 +7,7 @@
 
 class Command {
 public:
-    Command() {}
+    Command(ActuatorCommands& actuatorCmds) : actuatorCmds_(actuatorCmds) {}
     void setup();
     void commandGimbal(float angleX, float angleY);
     void commandMotorsPercent(int throttleMotor1, int throttleMotor2);
@@ -27,6 +27,8 @@ private:
 
     Servo motor1;
     Servo motor2;
+
+    ActuatorCommands& actuatorCmds_;
 
     static constexpr int RED_PIN = 35;
     static constexpr int GREEN_PIN = 34;

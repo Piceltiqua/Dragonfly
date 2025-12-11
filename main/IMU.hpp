@@ -49,6 +49,8 @@ private:
     uint32_t t0;
     bool acc, gyro, quat;
     float qIMU0, qIMU1, qIMU2, qIMU3;
+    Eigen::Vector3f omega_IMU = Eigen::Vector3f(0.0f, 0.0f, 0.0f);
+    Eigen::Vector3f omega_CAD = Eigen::Vector3f(0.0f, 0.0f, 0.0f);
 
     Eigen::Quaternionf q_imu_to_enu = Eigen::Quaternionf(1, 0, 0, 0);  // Stores the raw reading from IMU.
     Eigen::Quaternionf q_cad_to_ned = Eigen::Quaternionf(1, 0, 0, 0);  // Stores the transformed quaternion that maps CAD to NED.

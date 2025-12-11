@@ -9,7 +9,6 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <deque>
-#include <eigen.h>
 
 static constexpr uint8_t STX = 0x7E;
 static constexpr uint8_t DLE = 0x7D;
@@ -102,14 +101,14 @@ struct ActuatorCommands {
     int16_t motor1Throttle = 0;
     int16_t motor2Throttle = 0;
     uint8_t legsPosition = LEGS_DEPLOYED;  // 0xA9: retracted, 0x9D: deployed
-    int16_t servoXAngle = 0;
-    int16_t servoYAngle = 0;
+    float servoXAngle = 0;
+    float servoYAngle = 0;
 };
 
 struct Attitude_angle {
     float roll;   // Roll
-    float pitch; // Pitch
-    float yaw;   // Yaw
+    float pitch;  // Pitch
+    float yaw;    // Yaw
 };
 
 struct rotationspeed {
@@ -127,7 +126,7 @@ struct AttitudeSetpoint {
 struct ControlOutput_attitude {
     float rollOutput;
     float pitchOutput;  // Torque X
-    float yawOutput; // Torque Y
+    float yawOutput;    // Torque Y
 };
 
 struct ControlOutput {
@@ -139,7 +138,7 @@ struct ControlOutput {
 
 struct ImuSample {
     uint32_t t_us;
-    Eigen::Vector3f omega_ned;  // in NED frame (rad/s)
+    Eigen::Vector3f omega_NED;  // in NED frame (rad/s)
     Eigen::Vector3f r_ant_ned;  // Projection of (0,0,0.475) from CAD to NED frame
 };
 
