@@ -77,6 +77,7 @@ private:
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
+    void smooth_imuread(float &wx, float &wy, float &wz);
     float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight
     //Controleur constants
     Eigen::Matrix<float, 2, 4> K_lqr =
