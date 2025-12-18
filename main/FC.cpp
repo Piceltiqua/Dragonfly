@@ -5,7 +5,7 @@ FlightController::FlightController()
       gnss(attitude, gnssData),
       command(actuators),
       battery(batteryStatus)
-      
+
 // attitudeCtrl(attitude, actuatorCmds),
 // positionCtrl(posvel, targetAttitude, waypoints)
 
@@ -23,9 +23,6 @@ void FlightController::setup() {
     initializeSD();
     delay(100);
 
-
-
-
     // Serial.begin(115200);
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
     Serial1.addMemoryForWrite(extra_tx_mem, sizeof(extra_tx_mem));
@@ -33,6 +30,14 @@ void FlightController::setup() {
 }
 
 void FlightController::readSensors() {
+    if (digitalRead(BUTTON_PIN) == HIGH) {
+        Serial.println("Button pressed! Entering infinite loop for debugging.");
+        command.commandMotorsPercent(0, 0);
+        while (true) {
+            delay(1000);
+        }
+    }
+
     while (Serial1.available()) {
         int b = Serial1.read();
         if (b >= 0) processIncomingByte((uint8_t)b);
@@ -51,11 +56,11 @@ void FlightController::readSensors() {
         imu.read();
         smooth_imuread(attitude.wx, attitude.wy, attitude.wz);
 
-        if (AttitudeControlled == true){        
-        quaternionToEuler(attitude.qw, attitude.qi, attitude.qj, attitude.qk,
-                          current_attitude.roll, current_attitude.pitch, current_attitude.yaw);
-        
-        AttitudeHold();
+        if (AttitudeControlled == true) {
+            quaternionToEuler(attitude.qw, attitude.qi, attitude.qj, attitude.qk,
+                              current_attitude.roll, current_attitude.pitch, current_attitude.yaw);
+
+            AttitudeHold();
         }
 
         // Serial.print("IMU read time (us): ");
@@ -83,14 +88,13 @@ void FlightController::readSensors() {
             sdInitialized = false;  // force re-init on next start
         }
     }
-    
+
     // Telemetry loop
     if (telemTimer >= TELEMETRY_PERIOD_US) {
         telemTimer -= TELEMETRY_PERIOD_US;
 
         sendTelemetry();
     }
-    
 }
 
 void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
@@ -107,7 +111,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             // NOTE: we already echoed the frame back before executing
             command.setLedColor(0, 0, 0);
             break;
-        
 
         case MSG_LEG: {
             if (payloadLen >= 2) {
@@ -140,27 +143,23 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 uint8_t ctrl = payload[1];
                 command.setLedColor(1, 0, 0);
                 // handle enabling/disabling controllers
-                if ( ctrl == 0xC3){
-                    //anable attitude controller
-                    CalibrateAttitude();
-                    
+                if (ctrl == 0xC3) {
+                    // anable attitude controller
+                    // CalibrateAttitude();
+
                     attitudeCtrl.init(K_lqr);
                     AttitudeControlled = true;
-                    //led color orange
+                    // led color orange
                     command.setLedColor(1, 0.5, 0);
                     Serial.println("Attitude controller enabled");
 
-                }
-                else if ( ctrl == 0xCC){
-                    //anable atitude + position controller
+                } else if (ctrl == 0xCC) {
+                    // anable atitude + position controller
 
-                }
-                else if ( ctrl == 0xB7){
-                    //disable all controllers
+                } else if (ctrl == 0xB7) {
+                    // disable all controllers
                     AttitudeControlled = false;
-
                 }
-
             }
 
             break;
@@ -184,9 +183,9 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 // command.commandMotorsPercent(m1, m2);
                 float thrust1 = map(m1, 0, 100, 0, 2060);
                 float thrust2 = map(m2, 0, 100, 0, 2060);
-                
+
                 command.commandMotorsThrust(thrust1, thrust2);
-                //ctrlOutput.thrust = (thrust1) * 9.81f / 1000.0f; // total thrust in N
+                // ctrlOutput.thrust = (thrust1) * 9.81f / 1000.0f; // total thrust in N
                 command.setLedColor(1, 1, 0);
             }
             break;
@@ -517,13 +516,13 @@ bool FlightController::trySendPayloadWithCrc(const uint8_t* payloadWithCrc, size
     return true;
 }
 
-void FlightController::smooth_imuread(float &wx, float &wy, float &wz){
-    //ring buffer implementation
+void FlightController::smooth_imuread(float& wx, float& wy, float& wz) {
+    // ring buffer implementation
     static std::vector<float> wx_buffer;
     static std::vector<float> wy_buffer;
     static std::vector<float> wz_buffer;
-    
-    const int buffer_size = 20; 
+
+    const int buffer_size = 20;
     static int index = 0;
     if (wx_buffer.size() < buffer_size) {
         wx_buffer.push_back(wx);
@@ -547,7 +546,6 @@ void FlightController::smooth_imuread(float &wx, float &wy, float &wz){
     wx = wx_sum / wx_buffer.size();
     wy = wy_sum / wy_buffer.size();
     wz = wz_sum / wz_buffer.size();
-
 }
 
 void FlightController::sendTelemetry() {
@@ -766,16 +764,18 @@ void FlightController::writeBufferToSD() {
     }
 }
 
-
-
-
 void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
-                                         float &roll, float &pitch, float &yaw) {
-    Serial.print(millis()); Serial.print(",");
-    Serial.print(qw); Serial.print(",");
-    Serial.print(qi); Serial.print(",");
-    Serial.print(qj); Serial.print(",");
-    Serial.print(qk); Serial.print(",");
+                                         float& roll, float& pitch, float& yaw) {
+    Serial.print(millis());
+    Serial.print(",");
+    Serial.print(qw);
+    Serial.print(",");
+    Serial.print(qi);
+    Serial.print(",");
+    Serial.print(qj);
+    Serial.print(",");
+    Serial.print(qk);
+    Serial.print(",");
     // Normalize quaternion
     double n = std::sqrt(qw * qw + qi * qi + qj * qj + qk * qk);
     if (n < 1e-12) {
@@ -812,23 +812,24 @@ void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
     }
     if (yaw_y < 0.0f) {
         yaw_y += PI;
-    }
-    else if (yaw_y > 0.0f) {
+    } else if (yaw_y > 0.0f) {
         yaw_y -= PI;
     }
 
-
-    roll  = static_cast<float>(roll_z);
-    pitch =-static_cast<float>(pitch_x);
-    yaw   =  static_cast<float>(yaw_y);
-    Serial.print(roll * RAD_TO_DEG); Serial.print(",");
-    Serial.print(pitch * RAD_TO_DEG); Serial.print(",");
-    Serial.print(yaw * RAD_TO_DEG); Serial.print(",");
+    roll = static_cast<float>(roll_z);
+    pitch = -static_cast<float>(pitch_x);
+    yaw = static_cast<float>(yaw_y);
+    Serial.print(roll * RAD_TO_DEG);
+    Serial.print(",");
+    Serial.print(pitch * RAD_TO_DEG);
+    Serial.print(",");
+    Serial.print(yaw * RAD_TO_DEG);
+    Serial.print(",");
 }
 
 void FlightController::CalibrateAttitude() {
     Serial.print("Calibration mode: Hold rocket level for few seconds...\n");
-    command.setLedColor(1, 1, 0); 
+    command.setLedColor(1, 1, 0);
     float sum_roll = 0.0f;
     float sum_pitch = 0.0f;
     const int num_samples = 100;
@@ -840,7 +841,7 @@ void FlightController::CalibrateAttitude() {
                           roll, pitch, yaw);
         sum_roll += roll;
         sum_pitch += pitch;
-        delay(2); 
+        delay(2);
     }
     offset_roll = sum_roll / num_samples;
     offset_pitch = sum_pitch / num_samples;
@@ -852,29 +853,26 @@ void FlightController::CalibrateAttitude() {
     command.setLedColor(0, 1, 0);
 }
 
-
 void FlightController::AttitudeHold() {
-    
-    float lqr_thrust = 13.0f;     
-    float lqr_moment_arm = 0.108f; 
+    float lqr_thrust = 13.0f;
+    float lqr_moment_arm = 0.108f;
 
-    
     lqr_att.pitch = current_attitude.yaw;
 
-    lqr_att.yaw = current_attitude.pitch; 
+    lqr_att.yaw = current_attitude.pitch;
     /*
     Serial.print("Attitude Errors deg: ");
     Serial.print(lqr_att.pitch * RAD_TO_DEG);
     Serial.print(", ");
     Serial.println(lqr_att.yaw * RAD_TO_DEG);
     */
-    
-    lqr_rates.q = attitude.wy; 
-    lqr_rates.r = attitude.wx; 
 
-    lqr_sp.pitch = 0.0f; 
-    lqr_sp.yaw   = 0.0f; 
-    
+    lqr_rates.q = attitude.wy;
+    lqr_rates.r = attitude.wx;
+
+    lqr_sp.pitch = 0.0f;
+    lqr_sp.yaw = 0.0f;
+
     attitudeCtrl.compute(lqr_att, lqr_rates, lqr_thrust, lqr_moment_arm, lqr_sp, lqr_out);
     /*
     Serial.print("LQR Outputs deg: ");
@@ -882,8 +880,8 @@ void FlightController::AttitudeHold() {
     Serial.print(", ");
     Serial.println(lqr_out.yawOutput  * RAD_TO_DEG);
     */
-    actuators.servoXAngle = lqr_out.pitchOutput * RAD_TO_DEG; 
-    
+    actuators.servoXAngle = lqr_out.pitchOutput * RAD_TO_DEG;
+
     actuators.servoYAngle = lqr_out.yawOutput * RAD_TO_DEG;
 
     command.commandGimbal(actuators.servoXAngle, actuators.servoYAngle);
@@ -900,17 +898,19 @@ void FlightController::AttitudeHold() {
     Serial.println(offset_roll * RAD_TO_DEG);
     */
     // Debug
-    
-    //Serial.print("Erreurs (deg): ");
-    //Serial.print(lqr_att.pitch * RAD_TO_DEG);
-    //Serial.print(", ");
-    //Serial.println(lqr_att.yaw * RAD_TO_DEG);
-    //Serial.print("Outputs (deg): ");
-    Serial.print(attitude.wx ); Serial.print(", ");
-    Serial.print(attitude.wy ); Serial.print(", ");
-    Serial.print(attitude.wz ); Serial.print(", ");
+
+    // Serial.print("Erreurs (deg): ");
+    // Serial.print(lqr_att.pitch * RAD_TO_DEG);
+    // Serial.print(", ");
+    // Serial.println(lqr_att.yaw * RAD_TO_DEG);
+    // Serial.print("Outputs (deg): ");
+    Serial.print(attitude.wx);
+    Serial.print(", ");
+    Serial.print(attitude.wy);
+    Serial.print(", ");
+    Serial.print(attitude.wz);
+    Serial.print(", ");
     Serial.print(actuators.servoXAngle);
-    Serial.print(", "); 
+    Serial.print(", ");
     Serial.println(actuators.servoYAngle);
-    
-}   
+}

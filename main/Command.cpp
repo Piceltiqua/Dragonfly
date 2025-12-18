@@ -13,10 +13,8 @@ void Command::setup() {
     motor1.attach(2, 1100, 1940);
     motor2.attach(3, 1100, 1940);
 
-    //leg1.writeMicroseconds(730);
-    //leg2.writeMicroseconds(730);
-    //leg3.writeMicroseconds(800);
-    retractLegs();  
+    extendLegs();
+    
     motor1.writeMicroseconds(1100);
     motor2.writeMicroseconds(1100);
 }

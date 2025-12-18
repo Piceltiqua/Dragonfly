@@ -8,6 +8,7 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+#include <Eigen/LU>
 #include <deque>
 
 static constexpr uint8_t STX = 0x7E;
@@ -33,6 +34,8 @@ static constexpr uint8_t RECORDING_OFF = 0xF1;
 static constexpr uint8_t CTRL_ATT_OFF_POS_OFF = 0xB7;
 static constexpr uint8_t CTRL_ATT_ON_POS_OFF = 0xC3;
 static constexpr uint8_t CTRL_ATT_ON_POS_ON = 0xCC;
+
+#define BUTTON_PIN 37
 
 // Fixed quaternion encoding the axis mapping between the CAD and the IMU
 const Eigen::Quaternionf q_cad_to_imu = Eigen::Quaternionf(-0.5, -0.5, 0.5, 0.5);  // w,x,y,z

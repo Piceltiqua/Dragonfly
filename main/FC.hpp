@@ -4,18 +4,17 @@
 #include <SD.h>
 #include <SPI.h>
 
+#include <cmath>
+
 #include "Battery.hpp"
 #include "Command.hpp"
 #include "GNSS.hpp"
 #include "IMU.hpp"
+#include "LQR_attitude.hpp"
 #include "Logging.hpp"
 #include "RingBuf.h"
 #include "SdFat.h"
 #include "Utils.hpp"
-#include "LQR_attitude.hpp"
-#include <Eigen/LU>
-#include <cmath>
-
 
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
@@ -65,7 +64,7 @@ private:
     GNSSData gnssData;
     BatteryStatus batteryStatus;
     ActuatorCommands actuators;
-    
+
     IMU imu;
     GNSS gnss;
     Command command;
@@ -77,12 +76,12 @@ private:
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
-    void smooth_imuread(float &wx, float &wy, float &wz);
+    void smooth_imuread(float& wx, float& wy, float& wz);
     float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight
-    //Controleur constants
+    // Controleur constants
     Eigen::Matrix<float, 2, 4> K_lqr =
         (Eigen::Matrix<float, 2, 4>() << 0.5345f, -0.0000f, 0.2484f, -0.0000f,
-                                   -0.0000f, 0.5345f, -0.0000f, 0.2484f)
+         -0.0000f, 0.5345f, -0.0000f, 0.2484f)
             .finished();
     Attitude_angle lqr_att;
     Attitude_angle current_attitude;
@@ -101,9 +100,9 @@ private:
     float offset_roll = 0.0f;
     float offset_pitch = 0.0f;
 
-    //conversion quaternion to euler angles
+    // conversion quaternion to euler angles
     void quaternionToEuler(float qw, float qi, float qj, float qk,
-                           float &roll, float &pitch, float &yaw);
+                           float& roll, float& pitch, float& yaw);
     void CalibrateAttitude();
     // Telemetry functions
     void processIncomingByte(uint8_t b);  // Read incoming data
