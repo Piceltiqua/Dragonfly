@@ -42,7 +42,7 @@ private:
     static constexpr int PIN_MOTOR_1 = 2;
     static constexpr int PIN_MOTOR_2 = 3;
 
-    static constexpr float MAX_GIMBAL_ANGLE = 6.0f;  // degrees
+    static constexpr float MAX_GIMBAL_ANGLE = 3.0f;  // degrees
 
     float servoAngleGimbalX, servoAngleGimbalY;
     int timingMotor1, timingMotor2, timingGimbalX, timingGimbalY;

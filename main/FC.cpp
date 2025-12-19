@@ -766,16 +766,16 @@ void FlightController::writeBufferToSD() {
 
 void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
                                          float& roll, float& pitch, float& yaw) {
-    Serial.print(millis());
-    Serial.print(",");
-    Serial.print(qw);
-    Serial.print(",");
-    Serial.print(qi);
-    Serial.print(",");
-    Serial.print(qj);
-    Serial.print(",");
-    Serial.print(qk);
-    Serial.print(",");
+    // Serial.print(millis());
+    // Serial.print(",");
+    // Serial.print(qw);
+    // Serial.print(",");
+    // Serial.print(qi);
+    // Serial.print(",");
+    // Serial.print(qj);
+    // Serial.print(",");
+    // Serial.print(qk);
+    // Serial.print(",");
     // Normalize quaternion
     double n = std::sqrt(qw * qw + qi * qi + qj * qj + qk * qk);
     if (n < 1e-12) {
@@ -819,12 +819,12 @@ void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
     roll = static_cast<float>(roll_z);
     pitch = -static_cast<float>(pitch_x);
     yaw = static_cast<float>(yaw_y);
-    Serial.print(roll * RAD_TO_DEG);
-    Serial.print(",");
-    Serial.print(pitch * RAD_TO_DEG);
-    Serial.print(",");
-    Serial.print(yaw * RAD_TO_DEG);
-    Serial.print(",");
+    // Serial.print(roll * RAD_TO_DEG);
+    // Serial.print(",");
+    // Serial.print(pitch * RAD_TO_DEG);
+    // Serial.print(",");
+    // Serial.print(yaw * RAD_TO_DEG);
+    // Serial.print(",");
 }
 
 void FlightController::CalibrateAttitude() {

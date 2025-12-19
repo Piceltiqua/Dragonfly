@@ -14,7 +14,7 @@ void Command::setup() {
     motor2.attach(3, 1100, 1940);
 
     extendLegs();
-    
+
     motor1.writeMicroseconds(1100);
     motor2.writeMicroseconds(1100);
 }
@@ -40,21 +40,23 @@ void Command::commandGimbal(float gimbalAngleX, float gimbalAngleY) {
         gimbalAngleY = -MAX_GIMBAL_ANGLE;
     }
 
-    actuatorCmds_.servoXAngle = -0.00529 * pow(gimbalAngleX, 3) + 0.0233 * pow(gimbalAngleX, 2) - 5.60 * gimbalAngleX + 1.37;
-    actuatorCmds_.servoYAngle = 0.0117 * pow(gimbalAngleY, 3) - 0.0274 * pow(gimbalAngleY, 2) + 5.28 * gimbalAngleY + 0.108;
+    actuatorCmds_.servoXAngle = 0.236 * pow(-gimbalAngleX, 3) - 0.164 * pow(-gimbalAngleX, 2) - 5.395 * gimbalAngleX - 7.214;
+    actuatorCmds_.servoYAngle = 6.81 * gimbalAngleY - 9.13;
 
     uint16_t timingX = map(actuatorCmds_.servoXAngle, -60.0f, 60.0f, 900, 2100);
     uint16_t timingY = map(actuatorCmds_.servoYAngle, -60.0f, 60.0f, 900, 2100);
 
     gimbalX.writeMicroseconds(timingX);
     gimbalY.writeMicroseconds(timingY);
-    /*
-    Serial.print("Commanded servo X with ");
-    Serial.print(timingX);
-    Serial.print("us and servo Y with ");
-    Serial.print(timingY);
-    Serial.println("us");
-    */
+
+    Serial.print("Gimbal X angle (deg): ");
+    Serial.println(gimbalAngleX);
+    Serial.print("Gimbal Y angle (deg): ");
+    Serial.println(gimbalAngleY);
+    Serial.print("Servo X angle (deg): ");
+    Serial.println(actuatorCmds_.servoXAngle);
+    Serial.print("Servo Y angle (deg): ");
+    Serial.println(actuatorCmds_.servoYAngle);
 }
 
 void Command::commandMotorsPercent(int throttleMotor1, int throttleMotor2) {
