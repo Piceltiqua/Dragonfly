@@ -5,27 +5,35 @@ void AttitudeController::init(Eigen::Matrix<float, 2, 4> K_init){
 }
 
 void AttitudeController::control(){
-    // quat_to_Euler(current_attitude_, attitude_angle_);
+    quat_to_Euler(current_attitude_, attitude_angle_);
     // attitude_angle_.roll  -= offset_roll_;
     // attitude_angle_.pitch -= offset_pitch_;
 
-    // Peut être à inverser
     Eigen::Matrix<float, 4, 1> x;
-    x << attitude_angle_.pitch, attitude_angle_.yaw, current_attitude_.wy, current_attitude_.wx;
+    x << attitude_angle_.pitch, attitude_angle_.yaw, current_attitude_.wx, current_attitude_.wy;
     
     Eigen::Matrix<float, 4, 1> x_sp;
     // the target angular rates are set to zero
     x_sp <<  control_input_.attitudeSetpoint.pitch, control_input_.attitudeSetpoint.yaw, 0.0f, 0.0f;
 
+    Serial.print("Pitch error: ");
+    Serial.println(x(0) - x_sp(0));
+    Serial.print("Yaw error: ");
+    Serial.println(x(1) - x_sp(1));
+    Serial.print("Wx error: ");
+    Serial.println(x(3) - x_sp(3));
+    Serial.print("Wy error: ");
+    Serial.println(x(2) - x_sp(2));
+
     Eigen::Matrix<float, 4, 1> e = x - x_sp;
     Eigen::Matrix<float, 2, 1> u = -K * e;
     
     if (control_input_.thrustCommand > 0.001f) { 
-        attitute_control_output_.servoYAngle =   RAD_TO_DEG * u(0) / (control_input_.thrustCommand * control_input_.momentArm);
-        attitute_control_output_.servoXAngle = - RAD_TO_DEG * u(1) / (control_input_.thrustCommand  * control_input_.momentArm);
+        attitute_control_output_.servoXAngle = RAD_TO_DEG * u(1) / (control_input_.thrustCommand * control_input_.momentArm);
+        attitute_control_output_.servoYAngle = - RAD_TO_DEG * u(0) / (control_input_.thrustCommand  * control_input_.momentArm);
     } else {
-        attitute_control_output_.servoYAngle = 0.0f;
         attitute_control_output_.servoXAngle = 0.0f;
+        attitute_control_output_.servoYAngle = 0.0f;
     }
 };
 
@@ -98,7 +106,7 @@ void AttitudeController::quat_to_Euler(Attitude& attitude_quat, AttitudeAngle& a
         yaw_y -= PI;
     }
 
-    attitude_angle.roll = static_cast<float>(roll_z);
-    attitude_angle.pitch = -static_cast<float>(pitch_x);
+    attitude_angle.roll =  static_cast<float>(roll_z);
+    attitude_angle.pitch = - static_cast<float>(pitch_x);
     attitude_angle.yaw = static_cast<float>(yaw_y);
 }
