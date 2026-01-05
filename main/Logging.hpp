@@ -18,8 +18,6 @@ public:
         String header;
         // Original telemetry fields (preserved for backward compatibility)
         header += "time_us,";
-        header += "posN_m,posE_m,posD_m,";
-        header += "velN_m/s,velE_m/s,velD_m/s,";
         header += "Qw,Qx,Qy,Qz,Wx_rad/s,Wy_rad/s,Wz_rad/s,";
         header += "accN_m/s2,accE_m/s2,accD_m/s2,";
         header += "GNSS_lat_deg,GNSS_lon_deg,GNSS_alt_m,";
@@ -59,7 +57,6 @@ public:
      */
     static size_t packSnapshotCsv(char* buf, size_t bufSize,
                                   uint32_t time_us,
-                                  const PosVel& posvel,
                                   const Attitude& attitude,
                                   const IMUAcceleration& imuAcc,
                                   const GNSSData& gnssData,
@@ -73,8 +70,6 @@ public:
         // Original telemetry fields
         ret = snprintf(buf + n, bufSize - n,
                        "%lu,"                                 // micros
-                       "%.4f,%.4f,%.4f,"                      // posN,posE,posD
-                       "%.4f,%.4f,%.4f,"                      // velN,velE,velD
                        "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,"  // qw,qi,qj,qk,wx,wy,wz
                        "%.6f,%.6f,%.6f,"                      // imu ax,ay,az
                        "%.12f,%.12f,%.4f,"                    // GNSS lat(double), lon(double), alt(float)
@@ -85,8 +80,6 @@ public:
                        "%u,%d,%u,%u,"                         // battery currentDraw, currentConsumed, batteryVoltage, batteryLevel
                        "%d,%d,%u,%d,%d",                      // actuators motor1, motor2, legs, gimbalX, gimbalY
                        (unsigned long)time_us,
-                       posvel.posN, posvel.posE, posvel.posD,
-                       posvel.velN, posvel.velE, posvel.velD,
                        attitude.qw, attitude.qi, attitude.qj, attitude.qk,
                        attitude.wx, attitude.wy, attitude.wz,
                        imuAcc.ax_NED, imuAcc.ay_NED, imuAcc.az_NED,

@@ -4,12 +4,16 @@ FlightController::FlightController()
     : imu(imuAcc, attitude),
       gnss(attitude, gnssData),
       command(actuators),
-      battery(batteryStatus)
+      battery(batteryStatus),
+      attCtrl(attitude, positionControllerOutput, actuators)
+      // posCtrl(gnssData, positionControllerOutput, waypoints)
 
-// attitudeCtrl(attitude, actuatorCmds),
-// positionCtrl(posvel, targetAttitude, waypoints)
-
-{}
+{
+    positionControllerOutput.attitudeSetpoint.pitch = 0.0f;
+    positionControllerOutput.attitudeSetpoint.yaw = 0.0f;
+    positionControllerOutput.momentArm = 0.108f;
+    positionControllerOutput.thrustCommand = 13.0f;
+}
 
 void FlightController::setup() {
     imu.setup(IMU_FREQ_HZ);
@@ -30,6 +34,7 @@ void FlightController::setup() {
 }
 
 void FlightController::readSensors() {
+    // Emergency stop
     if (digitalRead(BUTTON_PIN) == HIGH) {
         Serial.println("Button pressed! Entering infinite loop for debugging.");
         command.commandMotorsPercent(0, 0);
@@ -38,6 +43,7 @@ void FlightController::readSensors() {
         }
     }
 
+    // Receive commands
     while (Serial1.available()) {
         int b = Serial1.read();
         if (b >= 0) processIncomingByte((uint8_t)b);
@@ -45,41 +51,29 @@ void FlightController::readSensors() {
 
     // Attitude loop
     if (IMUTimer >= IMU_PERIOD_US) {
-        // Receive commands
-        static uint32_t sensorReadCounter = 0;
-        sensorReadCounter++;
-
         IMUTimer -= IMU_PERIOD_US;
         flightTimeSeconds = (float)millis() / 1000.0f;
 
-        // uint32_t t0_imuread = micros();
         imu.read();
         smooth_imuread(attitude.wx, attitude.wy, attitude.wz);
 
         if (AttitudeControlled == true) {
-            quaternionToEuler(attitude.qw, attitude.qi, attitude.qj, attitude.qk,
-                              current_attitude.roll, current_attitude.pitch, current_attitude.yaw);
-
-            AttitudeHold();
+            attCtrl.control();
         }
 
-        // Serial.print("IMU read time (us): ");
-        // Serial.println(micros() - t0_imuread);
 
         battery.readVoltage();
         battery.readCurrent();
         battery.integrateCurrentDraw();
+
+        // Position loop
         if (gnss.read()) {
             if (gnssData.fixType == 6) {
-                posvel.posN = gnssData.posN;
-                posvel.posE = gnssData.posE;
-                posvel.posD = gnssData.posD;
-                posvel.velN = gnssData.velN;
-                posvel.velE = gnssData.velE;
-                posvel.velD = gnssData.velD;
+
             }
         }
 
+        // Write to SD
         if (isRecording && SD.mediaPresent()) {
             writeToRingBuffer();
             writeBufferToSD();
@@ -89,7 +83,7 @@ void FlightController::readSensors() {
         }
     }
 
-    // Telemetry loop
+    // Telemetry sender loop
     if (telemTimer >= TELEMETRY_PERIOD_US) {
         telemTimer -= TELEMETRY_PERIOD_US;
 
@@ -147,7 +141,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                     // anable attitude controller
                     // CalibrateAttitude();
 
-                    attitudeCtrl.init(K_lqr);
                     AttitudeControlled = true;
                     // led color orange
                     command.setLedColor(1, 0.5, 0);
@@ -166,12 +159,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_ORIG:
             gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
-            posvel.posN = 0.0f;
-            posvel.posE = 0.0f;
-            posvel.posD = 0.0f;
-            posvel.velN = 0.0f;
-            posvel.velE = 0.0f;
-            posvel.velD = 0.0f;
             command.setLedColor(1, 0, 1);
             tSetOrigin = micros();
             break;
@@ -225,19 +212,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 void FlightController::printState() {
     Serial.print(millis());
     Serial.print(",");
-    Serial.print(posvel.posN);
-    Serial.print(",");
-    Serial.print(posvel.posE);
-    Serial.print(",");
-    Serial.print(posvel.posD);
-    Serial.print(",");
-    Serial.print(posvel.velN);
-    Serial.print(",");
-    Serial.print(posvel.velE);
-    Serial.print(",");
-    Serial.print(posvel.velD);
-    Serial.print(",");
-
     Serial.print(attitude.qw);
     Serial.print(",");
     Serial.print(attitude.qi);
@@ -321,18 +295,18 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     *p++ = MSG_DATA;
 
     // append floats/doubles etc. use memcpy to preserve bit patterns
-    memcpy(p, &posvel.posN, sizeof(posvel.posN));
-    p += sizeof(posvel.posN);
-    memcpy(p, &posvel.posE, sizeof(posvel.posE));
-    p += sizeof(posvel.posE);
-    memcpy(p, &posvel.posD, sizeof(posvel.posD));
-    p += sizeof(posvel.posD);
-    memcpy(p, &posvel.velN, sizeof(posvel.velN));
-    p += sizeof(posvel.velN);
-    memcpy(p, &posvel.velE, sizeof(posvel.velE));
-    p += sizeof(posvel.velE);
-    memcpy(p, &posvel.velD, sizeof(posvel.velD));
-    p += sizeof(posvel.velD);
+    memcpy(p, &gnssData.posN, sizeof(gnssData.posN));
+    p += sizeof(gnssData.posN);
+    memcpy(p, &gnssData.posE, sizeof(gnssData.posE));
+    p += sizeof(gnssData.posE);
+    memcpy(p, &gnssData.posD, sizeof(gnssData.posD));
+    p += sizeof(gnssData.posD);
+    memcpy(p, &gnssData.velN, sizeof(gnssData.velN));
+    p += sizeof(gnssData.velN);
+    memcpy(p, &gnssData.velE, sizeof(gnssData.velE));
+    p += sizeof(gnssData.velE);
+    memcpy(p, &gnssData.velD, sizeof(gnssData.velD));
+    p += sizeof(gnssData.velD);
 
     memcpy(p, &imuAcc.ax_NED, sizeof(imuAcc.ax_NED));
     p += sizeof(imuAcc.ax_NED);
@@ -660,7 +634,7 @@ void FlightController::writeToRingBuffer() {
     char line[2048];  // Reduced size since EKF data is removed
     size_t len = Logging::packSnapshotCsv(line, sizeof(line),
                                           (uint32_t)micros(),
-                                          posvel, attitude, imuAcc, gnssData,
+                                          attitude, imuAcc, gnssData,
                                           batteryStatus, actuators,
                                           gnssSnap, imuSnap);
 
@@ -762,155 +736,4 @@ void FlightController::writeBufferToSD() {
             return;
         }
     }
-}
-
-void FlightController::quaternionToEuler(float qw, float qi, float qj, float qk,
-                                         float& roll, float& pitch, float& yaw) {
-    // Serial.print(millis());
-    // Serial.print(",");
-    // Serial.print(qw);
-    // Serial.print(",");
-    // Serial.print(qi);
-    // Serial.print(",");
-    // Serial.print(qj);
-    // Serial.print(",");
-    // Serial.print(qk);
-    // Serial.print(",");
-    // Normalize quaternion
-    double n = std::sqrt(qw * qw + qi * qi + qj * qj + qk * qk);
-    if (n < 1e-12) {
-        roll = pitch = yaw = 0.0f;
-        return;
-    }
-    float w = qw / n;
-    float x = qi / n;
-    float y = qj / n;
-    float z = qk / n;
-
-    float R11 = 1.0f - 2.0f * (y * y + z * z);
-    float R12 = 2.0f * (x * y - w * z);
-    float R21 = 2.0f * (x * y + w * z);
-    float R22 = 1.0f - 2.0f * (x * x + z * z);
-    float R31 = 2.0f * (x * z - w * y);
-    float R32 = 2.0f * (y * z + w * x);
-    float R33 = 1.0f - 2.0f * (x * x + y * y);
-
-    float sin_pitch = R32;
-    if (sin_pitch > 1.0f) sin_pitch = 1.0f;
-    if (sin_pitch < -1.0f) sin_pitch = -1.0f;
-    float pitch_x = std::asin(sin_pitch);
-    float cos_pitch = std::cos(pitch_x);
-
-    const float EPS = 1e-8f;
-    float roll_z, yaw_y;
-    if (std::fabs(cos_pitch) > EPS) {
-        roll_z = std::atan2(-R12, R22);
-        yaw_y = std::atan2(-R31, R33);
-    } else {
-        roll_z = std::atan2(R21, R11);
-        yaw_y = 0.0f;
-    }
-    if (yaw_y < 0.0f) {
-        yaw_y += PI;
-    } else if (yaw_y > 0.0f) {
-        yaw_y -= PI;
-    }
-
-    roll = static_cast<float>(roll_z);
-    pitch = -static_cast<float>(pitch_x);
-    yaw = static_cast<float>(yaw_y);
-    // Serial.print(roll * RAD_TO_DEG);
-    // Serial.print(",");
-    // Serial.print(pitch * RAD_TO_DEG);
-    // Serial.print(",");
-    // Serial.print(yaw * RAD_TO_DEG);
-    // Serial.print(",");
-}
-
-void FlightController::CalibrateAttitude() {
-    Serial.print("Calibration mode: Hold rocket level for few seconds...\n");
-    command.setLedColor(1, 1, 0);
-    float sum_roll = 0.0f;
-    float sum_pitch = 0.0f;
-    const int num_samples = 100;
-
-    for (int i = 0; i < num_samples; ++i) {
-        imu.read();
-        float roll, pitch, yaw;
-        quaternionToEuler(attitude.qw, attitude.qi, attitude.qj, attitude.qk,
-                          roll, pitch, yaw);
-        sum_roll += roll;
-        sum_pitch += pitch;
-        delay(2);
-    }
-    offset_roll = sum_roll / num_samples;
-    offset_pitch = sum_pitch / num_samples;
-    Serial.print("Calibration complete. Offsets - Roll: ");
-    Serial.print(offset_roll * RAD_TO_DEG);
-    Serial.print(" deg, Pitch: ");
-    Serial.print(offset_pitch * RAD_TO_DEG);
-    Serial.print(" deg\n");
-    command.setLedColor(0, 1, 0);
-}
-
-void FlightController::AttitudeHold() {
-    float lqr_thrust = 13.0f;
-    float lqr_moment_arm = 0.108f;
-
-    lqr_att.pitch = current_attitude.yaw;
-
-    lqr_att.yaw = current_attitude.pitch;
-    /*
-    Serial.print("Attitude Errors deg: ");
-    Serial.print(lqr_att.pitch * RAD_TO_DEG);
-    Serial.print(", ");
-    Serial.println(lqr_att.yaw * RAD_TO_DEG);
-    */
-
-    lqr_rates.q = attitude.wy;
-    lqr_rates.r = attitude.wx;
-
-    lqr_sp.pitch = 0.0f;
-    lqr_sp.yaw = 0.0f;
-
-    attitudeCtrl.compute(lqr_att, lqr_rates, lqr_thrust, lqr_moment_arm, lqr_sp, lqr_out);
-    /*
-    Serial.print("LQR Outputs deg: ");
-    Serial.print(lqr_out.pitchOutput * RAD_TO_DEG);
-    Serial.print(", ");
-    Serial.println(lqr_out.yawOutput  * RAD_TO_DEG);
-    */
-    actuators.servoXAngle = lqr_out.pitchOutput * RAD_TO_DEG;
-
-    actuators.servoYAngle = lqr_out.yawOutput * RAD_TO_DEG;
-
-    command.commandGimbal(actuators.servoXAngle, actuators.servoYAngle);
-    /*
-    Serial.print("Current Attitude (deg): ");
-    Serial.print(current_attitude.roll * RAD_TO_DEG);
-    Serial.print(",");
-    Serial.print(current_attitude.pitch * RAD_TO_DEG);
-    Serial.print(",");
-    Serial.println(current_attitude.yaw * RAD_TO_DEG);
-    Serial.print(",");
-    Serial.print(offset_pitch * RAD_TO_DEG);
-    Serial.print(", ");
-    Serial.println(offset_roll * RAD_TO_DEG);
-    */
-    // Debug
-
-    // Serial.print("Erreurs (deg): ");
-    // Serial.print(lqr_att.pitch * RAD_TO_DEG);
-    // Serial.print(", ");
-    // Serial.println(lqr_att.yaw * RAD_TO_DEG);
-    // Serial.print("Outputs (deg): ");
-    Serial.print(attitude.wx);
-    Serial.print(", ");
-    Serial.print(attitude.wy);
-    Serial.print(", ");
-    Serial.print(attitude.wz);
-    Serial.print(", ");
-    Serial.print(actuators.servoXAngle);
-    Serial.print(", ");
-    Serial.println(actuators.servoYAngle);
 }

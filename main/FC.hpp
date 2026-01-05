@@ -57,53 +57,37 @@ public:
 
 private:
     void printState();
+    void smooth_imuread(float& wx, float& wy, float& wz);
 
-    PosVel posvel;
     Attitude attitude;
     IMUAcceleration imuAcc;
     GNSSData gnssData;
     BatteryStatus batteryStatus;
     ActuatorCommands actuators;
+    PosCtrlOutput positionControllerOutput;
 
     IMU imu;
     GNSS gnss;
     Command command;
     Battery battery;
-    // AttitudeController attCtrl;
-    LQR_attitude attitudeCtrl;
+    AttitudeController attCtrl;
     // PositionController posCtrl;
 
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
-    void smooth_imuread(float& wx, float& wy, float& wz);
     float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight
-    // Controleur constants
-    Eigen::Matrix<float, 2, 4> K_lqr =
-        (Eigen::Matrix<float, 2, 4>() << 0.5345f, -0.0000f, 0.2484f, -0.0000f,
-         -0.0000f, 0.5345f, -0.0000f, 0.2484f)
-            .finished();
-    Attitude_angle lqr_att;
-    Attitude_angle current_attitude;
-    rotationspeed lqr_rates;
-    AttitudeSetpoint lqr_sp;
-    ControlOutput_attitude lqr_out;
-    ControlOutput ctrlOutput;  // stores latest thrust command from ground
+
     bool AttitudeControlled = false;
     bool PositionControlled = false;
+
     // Telemetry constants
     bool isRecording = false;
     bool inFrame = false;
     bool escapeNext = false;
     uint8_t frameBuf[MAX_FRAME_BUFFER];
     size_t frameBufLen = 0;
-    float offset_roll = 0.0f;
-    float offset_pitch = 0.0f;
 
-    // conversion quaternion to euler angles
-    void quaternionToEuler(float qw, float qi, float qj, float qk,
-                           float& roll, float& pitch, float& yaw);
-    void CalibrateAttitude();
     // Telemetry functions
     void processIncomingByte(uint8_t b);  // Read incoming data
     void sendTelemetry();
@@ -137,7 +121,6 @@ private:
     String filename;
     uint32_t tPreviousFlush = 0;
     uint32_t tSetOrigin = 0;
-    void AttitudeHold();
 };
 
 #endif

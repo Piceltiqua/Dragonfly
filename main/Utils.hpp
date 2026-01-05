@@ -44,15 +44,6 @@ const Eigen::Quaternionf q_enu_to_ned = Eigen::Quaternionf(0, 0.7071068, 0.70710
 // Antenna offset in CAD frame
 const Eigen::Vector3f r_ant_cad = Eigen::Vector3f(0.0f, 0.0f, 0.475f);
 
-struct PosVel {
-    float posN = 0.0f;
-    float posE = 0.0f;
-    float posD = 0.0f;
-    float velN = 0.0f;
-    float velE = 0.0f;
-    float velD = 0.0f;
-};
-
 struct Attitude {
     float qw = 1.0f;
     float qi = 0.0f;
@@ -108,35 +99,16 @@ struct ActuatorCommands {
     float servoYAngle = 0;
 };
 
-struct Attitude_angle {
-    float roll;   // Roll
-    float pitch;  // Pitch
-    float yaw;    // Yaw
-};
-
-struct rotationspeed {
-    float p;
-    float q;
-    float r;
-};
-
-struct AttitudeSetpoint {
+struct AttitudeAngle {
     float roll;
     float pitch;
     float yaw;
 };
 
-struct ControlOutput_attitude {
-    float rollOutput;
-    float pitchOutput;  // Torque X
-    float yawOutput;    // Torque Y
-};
-
-struct ControlOutput {
-    float rollOutput;
-    float pitchOutput;
-    float yawOutput;
-    float thrust;
+struct PosCtrlOutput {
+    AttitudeAngle attitudeSetpoint;
+    float thrustCommand;
+    float momentArm;
 };
 
 struct ImuSample {
