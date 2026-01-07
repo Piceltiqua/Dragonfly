@@ -54,6 +54,12 @@ struct Attitude {
     float wz = 0.0f;
 };
 
+struct AttitudeAngle {
+    float roll;
+    float pitch;
+    float yaw;
+};
+
 struct IMUAcceleration {
     float ax_NED = 0.0f;
     float ay_NED = 0.0f;
@@ -80,10 +86,6 @@ struct GNSSData {
     uint8_t fixType = 0;
 };
 
-struct BarometerData {
-    float altBaro = 0.0f;
-};
-
 struct BatteryStatus {
     uint16_t currentDraw = 0;
     int16_t currentConsumed = 0;
@@ -99,16 +101,19 @@ struct ActuatorCommands {
     float servoYAngle = 0;
 };
 
-struct AttitudeAngle {
-    float roll;
-    float pitch;
-    float yaw;
-};
-
 struct PosCtrlOutput {
     AttitudeAngle attitudeSetpoint;
     float thrustCommand;
     float momentArm;
+};
+
+struct PosCtrlSetpoint {
+    float posN;
+    float posE;
+    float posD;
+    float velN;
+    float velE;
+    float velD;
 };
 
 struct ImuSample {

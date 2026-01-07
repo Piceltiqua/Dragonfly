@@ -1,7 +1,7 @@
 #include "LQR_attitude.hpp"
 
-void AttitudeController::init(Eigen::Matrix<float, 2, 4> K_init){
-    K = K_init;
+void AttitudeController::init(){
+    integral_error_att_ = Eigen::Matrix<float, 4, 1>::Zero();
 }
 
 void AttitudeController::control(){
@@ -14,7 +14,7 @@ void AttitudeController::control(){
     
     Eigen::Matrix<float, 4, 1> x_sp;
     // the target angular rates are set to zero
-    x_sp <<  control_input_.attitudeSetpoint.pitch, control_input_.attitudeSetpoint.yaw, 0.0f, 0.0f;
+    x_sp <<  attitude_setpoint_.attitudeSetpoint.pitch, attitude_setpoint_.attitudeSetpoint.yaw, 0.0f, 0.0f;
 
     Serial.print("Pitch error: ");
     Serial.println(x(0) - x_sp(0));
@@ -26,11 +26,11 @@ void AttitudeController::control(){
     Serial.println(x(2) - x_sp(2));
 
     Eigen::Matrix<float, 4, 1> e = x - x_sp;
-    Eigen::Matrix<float, 2, 1> u = -K * e;
+    Eigen::Matrix<float, 2, 1> u = -K_att * e;
     
-    if (control_input_.thrustCommand > 0.001f) { 
-        attitute_control_output_.servoXAngle = RAD_TO_DEG * u(1) / (control_input_.thrustCommand * control_input_.momentArm);
-        attitute_control_output_.servoYAngle = - RAD_TO_DEG * u(0) / (control_input_.thrustCommand  * control_input_.momentArm);
+    if (attitude_setpoint_.thrustCommand > 0.001f) { 
+        attitute_control_output_.servoXAngle = RAD_TO_DEG * u(1) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
+        attitute_control_output_.servoYAngle = - RAD_TO_DEG * u(0) / (attitude_setpoint_.thrustCommand  * attitude_setpoint_.momentArm);
     } else {
         attitute_control_output_.servoXAngle = 0.0f;
         attitute_control_output_.servoYAngle = 0.0f;

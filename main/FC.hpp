@@ -11,6 +11,7 @@
 #include "GNSS.hpp"
 #include "IMU.hpp"
 #include "LQR_attitude.hpp"
+#include "LQR_position.hpp"
 #include "Logging.hpp"
 #include "RingBuf.h"
 #include "SdFat.h"
@@ -64,20 +65,23 @@ private:
     GNSSData gnssData;
     BatteryStatus batteryStatus;
     ActuatorCommands actuators;
-    PosCtrlOutput positionControllerOutput;
+    PosCtrlOutput attitudeSetpoint;
+    PosCtrlSetpoint positionSetpoint;
 
     IMU imu;
     GNSS gnss;
     Command command;
     Battery battery;
     AttitudeController attCtrl;
-    // PositionController posCtrl;
+    PositionController posCtrl;
 
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
     float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight
 
+    float moment_arm_legs_down = 0.108f;
+    float moment_arm_legs_up = 0.070f; // A modifier
     bool AttitudeControlled = false;
     bool PositionControlled = false;
 

@@ -5,14 +5,22 @@ FlightController::FlightController()
       gnss(attitude, gnssData),
       command(actuators),
       battery(batteryStatus),
-      attCtrl(attitude, positionControllerOutput, actuators)
-      // posCtrl(gnssData, positionControllerOutput, waypoints)
+      attCtrl(attitude, attitudeSetpoint, actuators),
+      posCtrl(gnssData, positionSetpoint, attitudeSetpoint)
 
 {
-    positionControllerOutput.attitudeSetpoint.pitch = 0.0f;
-    positionControllerOutput.attitudeSetpoint.yaw = 0.0f;
-    positionControllerOutput.momentArm = 0.108f;
-    positionControllerOutput.thrustCommand = 13.0f;
+    attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
+    attitudeSetpoint.attitudeSetpoint.yaw = 0.0f;
+    attitudeSetpoint.momentArm = moment_arm_legs_down;
+    attitudeSetpoint.thrustCommand = 0.0f;
+
+    // We target to hover at 1 meter above ground level
+    positionSetpoint.posN =  0.0f;
+    positionSetpoint.posE =  0.0f;
+    positionSetpoint.posD = -1.0f;
+    positionSetpoint.velN =  0.0f;
+    positionSetpoint.velE =  0.0f;
+    positionSetpoint.velD =  0.0f;
 }
 
 void FlightController::setup() {
@@ -36,7 +44,7 @@ void FlightController::setup() {
 void FlightController::readSensors() {
     // Emergency stop
     if (digitalRead(BUTTON_PIN) == HIGH) {
-        Serial.println("Button pressed! Entering infinite loop for debugging.");
+        Serial.println("Emergency stop");
         command.commandMotorsPercent(0, 0);
         while (true) {
             delay(1000);
@@ -69,8 +77,11 @@ void FlightController::readSensors() {
 
         // Position loop
         if (gnss.read()) {
+            // Faire une loop pour vérifier le fix et attérir si pas de fix pendant trop longtemps
             if (gnssData.fixType == 6) {
-
+            }
+            if (PositionControlled == true) {
+                posCtrl.control();
             }
         }
 
@@ -103,7 +114,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
         case MSG_FLY:
             // start flight
             // implement your flight start logic here
-            // NOTE: we already echoed the frame back before executing
             command.setLedColor(0, 0, 0);
             break;
 
@@ -115,8 +125,10 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 command.setLedColor(0, 0, 1);
                 if (val == LEGS_DEPLOYED) {
                     command.extendLegs();
+                    attitudeSetpoint.momentArm = moment_arm_legs_down;
                 } else if (val == LEGS_RETRACTED) {
                     command.retractLegs();
+                    attitudeSetpoint.momentArm = moment_arm_legs_up;
                 }
             }
 
@@ -136,23 +148,24 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
         case MSG_CTRL:
             if (payloadLen >= 2) {
                 uint8_t ctrl = payload[1];
-                command.setLedColor(1, 0, 0);
-                // handle enabling/disabling controllers
                 if (ctrl == 0xC3) {
-                    // anable attitude controller
-                    // CalibrateAttitude();
-
+                    // enable attitude controller
                     AttitudeControlled = true;
+                    // Calibrer le controlleur d'attitude ici
                     // led color orange
                     command.setLedColor(1, 0.5, 0);
                     Serial.println("Attitude controller enabled");
 
                 } else if (ctrl == 0xCC) {
-                    // anable atitude + position controller
+                    command.setLedColor(1, 0, 0);
+                    AttitudeControlled = true;
+                    PositionControlled = true;
+                    Serial.println("Position and attitude controller enabled");
 
                 } else if (ctrl == 0xB7) {
-                    // disable all controllers
                     AttitudeControlled = false;
+                    PositionControlled = false;
+                    // A vérifier parce que c'est louche qu'il y ait qu'une commande pour les deux controleurs
                 }
             }
 
