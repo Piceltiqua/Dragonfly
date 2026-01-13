@@ -1,9 +1,5 @@
 #include "LQR_attitude.hpp"
 
-void AttitudeController::init(){
-    integral_error_att_ = Eigen::Matrix<float, 4, 1>::Zero();
-}
-
 void AttitudeController::control(){
     quat_to_Euler(current_attitude_, attitude_angle_);
     // attitude_angle_.roll  -= offset_roll_;
@@ -28,9 +24,9 @@ void AttitudeController::control(){
     Eigen::Matrix<float, 4, 1> e = x - x_sp;
     Eigen::Matrix<float, 2, 1> u = -K_att * e;
     
-    if (attitude_setpoint_.thrustCommand > 0.001f) { 
-        attitute_control_output_.servoXAngle = RAD_TO_DEG * u(1) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
-        attitute_control_output_.servoYAngle = - RAD_TO_DEG * u(0) / (attitude_setpoint_.thrustCommand  * attitude_setpoint_.momentArm);
+    if (attitude_setpoint_.thrustCommand > 0.001f) {
+        attitute_control_output_.servoXAngle =   RAD_TO_DEG * u(0) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
+        attitute_control_output_.servoYAngle = - RAD_TO_DEG * u(1) / (attitude_setpoint_.thrustCommand  * attitude_setpoint_.momentArm);
     } else {
         attitute_control_output_.servoXAngle = 0.0f;
         attitute_control_output_.servoYAngle = 0.0f;

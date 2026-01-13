@@ -78,7 +78,8 @@ private:
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
-    float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight
+    float flightTimeSeconds = 0.0f; // Used for countdown before flight and during flight
+    float lastGNSStime = 0.0f;      // Time since last GNSS reading in us, used for position controller
 
     float moment_arm_legs_down = 0.108f;
     float moment_arm_legs_up = 0.070f; // A modifier

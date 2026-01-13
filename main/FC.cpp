@@ -70,7 +70,6 @@ void FlightController::readSensors() {
             command.commandGimbal(actuators.servoXAngle,actuators.servoYAngle);
         }
 
-
         battery.readVoltage();
         battery.readCurrent();
         battery.integrateCurrentDraw();
@@ -81,8 +80,10 @@ void FlightController::readSensors() {
             if (gnssData.fixType == 6) {
             }
             if (PositionControlled == true) {
-                posCtrl.control();
+                float dt = (micros() - lastGNSStime) / 1e6f;
+                posCtrl.control(dt);
             }
+            lastGNSStime = micros();
         }
 
         // Write to SD
@@ -151,6 +152,8 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 if (ctrl == 0xC3) {
                     // enable attitude controller
                     AttitudeControlled = true;
+                    attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
+                    attitudeSetpoint.attitudeSetpoint.yaw = 0.0f;
                     // Calibrer le controlleur d'attitude ici
                     // led color orange
                     command.setLedColor(1, 0.5, 0);
@@ -160,12 +163,12 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                     command.setLedColor(1, 0, 0);
                     AttitudeControlled = true;
                     PositionControlled = true;
+                    posCtrl.init();
                     Serial.println("Position and attitude controller enabled");
 
                 } else if (ctrl == 0xB7) {
                     AttitudeControlled = false;
                     PositionControlled = false;
-                    // A vérifier parce que c'est louche qu'il y ait qu'une commande pour les deux controleurs
                 }
             }
 
