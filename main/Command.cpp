@@ -19,29 +19,43 @@ void Command::setup() {
     motor2.writeMicroseconds(1100);
 }
 
-void Command::commandGimbal(float gimbalAngleX, float gimbalAngleY) {
+void Command::commandGimbal(float newGimbalAngleX, float newGimbalAngleY) {
     /*
     Commands the TVC servos at 250Hz such that the gimbal reaches the specified angles.
     THE ANGLES GIVEN ARE NOT THE SERVO ANGLES.
-    gimbalAngleX: Desired angle for the X-axis (in degrees).
-    gimbalAngleY: Desired angle for the Y-axis (in degrees).
+    newGimbalAngleX: Desired angle for the X-axis (in degrees).
+    newGimbalAngleY: Desired angle for the Y-axis (in degrees).
     */
 
-    if (gimbalAngleX > MAX_GIMBAL_ANGLE) {
-        gimbalAngleX = MAX_GIMBAL_ANGLE;
+    if (newGimbalAngleX > MAX_GIMBAL_ANGLE) {
+        newGimbalAngleX = MAX_GIMBAL_ANGLE;
     }
-    if (gimbalAngleX < -MAX_GIMBAL_ANGLE) {
-        gimbalAngleX = -MAX_GIMBAL_ANGLE;
+    if (newGimbalAngleX < -MAX_GIMBAL_ANGLE) {
+        newGimbalAngleX = -MAX_GIMBAL_ANGLE;
     }
-    if (gimbalAngleY > MAX_GIMBAL_ANGLE) {
-        gimbalAngleY = MAX_GIMBAL_ANGLE;
+    if (newGimbalAngleY > MAX_GIMBAL_ANGLE) {
+        newGimbalAngleY = MAX_GIMBAL_ANGLE;
     }
-    if (gimbalAngleY < -MAX_GIMBAL_ANGLE) {
-        gimbalAngleY = -MAX_GIMBAL_ANGLE;
+    if (newGimbalAngleY < -MAX_GIMBAL_ANGLE) {
+        newGimbalAngleY = -MAX_GIMBAL_ANGLE;
     }
 
-    actuatorCmds_.servoXAngle = 0.236 * pow(-gimbalAngleX, 3) - 0.164 * pow(-gimbalAngleX, 2) - 5.395 * gimbalAngleX - 7.214;
-    actuatorCmds_.servoYAngle = 6.81 * gimbalAngleY - 9.13;
+    // If increasing angle motion
+    if (newGimbalAngleX >= currentGimbalAngleX) {
+        actuatorCmds_.servoXAngle = -2.034e-2 * pow(newGimbalAngleX, 3) + 3.762e-2 * pow(newGimbalAngleX, 2) - 5.142 * newGimbalAngleX + 10.97;
+    }
+    if (newGimbalAngleY >= currentGimbalAngleY) {
+        actuatorCmds_.servoYAngle = -3.339e-2 * pow(newGimbalAngleY, 2) - 5.364 * newGimbalAngleY + 13.64;
+    }
+    // If decreasing angle motion
+    if (newGimbalAngleX < currentGimbalAngleX) {
+        actuatorCmds_.servoXAngle = -8.894e-2 * pow(newGimbalAngleX, 2) - 5.128 * newGimbalAngleX + 8.112;
+    }
+    if (newGimbalAngleY < currentGimbalAngleY) {
+        actuatorCmds_.servoYAngle = -1.267e-2 * pow(newGimbalAngleY, 3) - 5.972e-2 * pow(newGimbalAngleY, 2) - 4.834 * newGimbalAngleY + 6.39;
+    }
+    currentGimbalAngleX = newGimbalAngleX;
+    currentGimbalAngleY = newGimbalAngleY;
 
     uint16_t timingX = map(actuatorCmds_.servoXAngle, -60.0f, 60.0f, 900, 2100);
     uint16_t timingY = map(actuatorCmds_.servoYAngle, -60.0f, 60.0f, 900, 2100);
@@ -50,9 +64,9 @@ void Command::commandGimbal(float gimbalAngleX, float gimbalAngleY) {
     gimbalY.writeMicroseconds(timingY);
 
     Serial.print("Gimbal X angle (deg): ");
-    Serial.println(gimbalAngleX);
+    Serial.println(newGimbalAngleX);
     Serial.print("Gimbal Y angle (deg): ");
-    Serial.println(gimbalAngleY);
+    Serial.println(newGimbalAngleY);
     Serial.print("Servo X angle (deg): ");
     Serial.println(actuatorCmds_.servoXAngle);
     Serial.print("Servo Y angle (deg): ");
