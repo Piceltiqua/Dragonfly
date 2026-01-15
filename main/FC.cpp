@@ -84,6 +84,9 @@ void FlightController::readSensors() {
                 posCtrl.control(dt);
             }
             lastGNSStime = micros();
+
+            // Change LED color based on RTK fix type
+            updateLedColorForRTKFix();
         }
 
         // Write to SD
@@ -102,9 +105,6 @@ void FlightController::readSensors() {
 
         sendTelemetry();
     }
-
-    // Change LED color based on RTK fix type
-    updateLedColorForRTKFix();
 }
 
 void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {
