@@ -97,6 +97,8 @@ struct ActuatorCommands {
     int16_t motor1Throttle = 0;
     int16_t motor2Throttle = 0;
     uint8_t legsPosition = LEGS_DEPLOYED;  // 0xA9: retracted, 0x9D: deployed
+    float gimbalXAngle = 0;
+    float gimbalYAngle = 0;
     float servoXAngle = 0;
     float servoYAngle = 0;
 };

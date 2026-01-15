@@ -2,14 +2,11 @@
 
 void AttitudeController::control(){
     quat_to_Euler(current_attitude_, attitude_angle_);
-    // attitude_angle_.roll  -= offset_roll_;
-    // attitude_angle_.pitch -= offset_pitch_;
-
     Eigen::Matrix<float, 4, 1> x;
     x << attitude_angle_.pitch, attitude_angle_.yaw, current_attitude_.wx, current_attitude_.wy;
     
     Eigen::Matrix<float, 4, 1> x_sp;
-    // the target angular rates are set to zero
+    // The target angular rates are set to zero
     x_sp <<  attitude_setpoint_.attitudeSetpoint.pitch, attitude_setpoint_.attitudeSetpoint.yaw, 0.0f, 0.0f;
 
     Serial.print("Pitch error: ");
@@ -25,31 +22,13 @@ void AttitudeController::control(){
     Eigen::Matrix<float, 2, 1> u = -K_att * e;
     
     if (attitude_setpoint_.thrustCommand > 0.001f) {
-        attitute_control_output_.servoXAngle =   RAD_TO_DEG * u(0) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
-        attitute_control_output_.servoYAngle = - RAD_TO_DEG * u(1) / (attitude_setpoint_.thrustCommand  * attitude_setpoint_.momentArm);
+        attitute_control_output_.gimbalXAngle = - RAD_TO_DEG * u(0) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
+        attitute_control_output_.gimbalYAngle = - RAD_TO_DEG * u(1) / (attitude_setpoint_.thrustCommand  * attitude_setpoint_.momentArm);
     } else {
-        attitute_control_output_.servoXAngle = 0.0f;
-        attitute_control_output_.servoYAngle = 0.0f;
+        attitute_control_output_.gimbalXAngle = 0.0f;
+        attitute_control_output_.gimbalYAngle = 0.0f;
     }
 };
-
-// void AttitudeController::calibrate(){
-//     float sum_roll = 0.0f;
-//     float sum_pitch = 0.0f;
-//     const int num_samples = 100;
-
-//     for (int i = 0; i < num_samples; ++i) {
-//         AttitudeAngle attitude_angle;
-//         imu.read();
-//         quaternion_to_Euler(current_attitude_, attitude_angle);
-//         sum_roll += attitude_angle.roll;
-//         sum_pitch += attitude_angle.pitch;
-//         delay(2);
-//     }
-
-//     offset_roll_ = sum_roll / num_samples
-//     offset_pitch_ = sum_pitch / num_samples
-// }
 
 void AttitudeController::quat_to_Euler(Attitude& attitude_quat, AttitudeAngle& attitude_angle) {
     

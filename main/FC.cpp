@@ -12,7 +12,7 @@ FlightController::FlightController()
     attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
     attitudeSetpoint.attitudeSetpoint.yaw = 0.0f;
     attitudeSetpoint.momentArm = moment_arm_legs_down;
-    attitudeSetpoint.thrustCommand = 0.0f;
+    attitudeSetpoint.thrustCommand = 12.5f;
 
     // We target to hover at 1 meter above ground level
     positionSetpoint.posN =  0.0f;
@@ -67,7 +67,7 @@ void FlightController::readSensors() {
 
         if (AttitudeControlled == true) {
             attCtrl.control();
-            command.commandGimbal(actuators.servoXAngle,actuators.servoYAngle);
+            command.commandGimbal(actuators.gimbalXAngle,actuators.gimbalYAngle);
         }
 
         battery.readVoltage();

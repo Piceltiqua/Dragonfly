@@ -18,7 +18,6 @@ public:
         }
 
     void control();
-    // void calibrate();
     void quat_to_Euler(Attitude& attitude_quat, AttitudeAngle& attitude_angle);
 
 private:
@@ -29,11 +28,7 @@ private:
 
     Eigen::Matrix<float, 2, 4> K_att = 
     (Eigen::Matrix<float, 2, 4>() << 0.5345f, -0.0000f, 0.2484f, -0.0000f,
-    -0.0000f, 0.5345f, -0.0000f, 0.2484f).finished(); 
-
-    // Calibration offsets (not implemented yet)
-    // float offset_roll_ = 0.0f;
-    // float offset_ptich_ = 0.0f;
+    -0.0000f, 0.5345f, -0.0000f, 0.2484f).finished();
 };
 
 #endif
