@@ -8,12 +8,32 @@ void WaypointManager::init() {
     waypoints_.push_back({10.0f, 1.0f, 0.0f, -1.0f});
     waypoints_.push_back({15.0f, 1.0f, 0.0f,  0.0f});
 
+    // Check all waypoint segments for feasibility
+    for (size_t i = 1; i < waypoints_.size(); ++i) {
+        bool valid = waypointParameters(waypoints_[i], waypoints_[i - 1]);
+        if (!valid) {
+            invalid = true;
+            Serial.println("Waypoint segment " + String(i-1) + " to " + String(i) + " is not feasible with given constraints.");
+            return;
+        }
+    }
+
     previous_waypoint_index_ = 0;
     current_waypoint_index_ = 1;
     waypointParameters(waypoints_[current_waypoint_index_], waypoints_[previous_waypoint_index_]);
 }
 
 void WaypointManager::trajectoryControl(float flight_time) {
+    if (invalid) {
+        position_setpoint_.posN = 0.0f;
+        position_setpoint_.posE = 0.0f;
+        position_setpoint_.posD = 0.0f;
+        position_setpoint_.velN = 0.0f;
+        position_setpoint_.velE = 0.0f;
+        position_setpoint_.velD = 0.0f;
+        return;
+    }
+
     if (current_waypoint_index_ >= waypoints_.size()) {
         position_setpoint_.velN = 0.0f;
         position_setpoint_.velE = 0.0f;

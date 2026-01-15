@@ -90,8 +90,8 @@ void PositionController::control(float dt){
 
     float x_command =   u_x(0)*m / position_control_output_.thrustCommand;
     float y_command = - u_y(0)*m / position_control_output_.thrustCommand;
-    position_control_output_.attitudeSetpoint.pitch = min( max(x_command, -0.3f), 0.3f);
-    position_control_output_.attitudeSetpoint.yaw = min( max(y_command, -0.3f), 0.3f);
+    position_control_output_.attitudeSetpoint.pitch = min(max(x_command, -0.3f), 0.3f);
+    position_control_output_.attitudeSetpoint.yaw = min(max(y_command, -0.3f), 0.3f);
 
     Serial.print("Thrust command: ");
     Serial.println(position_control_output_.thrustCommand);

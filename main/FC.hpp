@@ -12,6 +12,7 @@
 #include "IMU.hpp"
 #include "LQR_attitude.hpp"
 #include "LQR_position.hpp"
+#include "Waypoints.hpp"
 #include "Logging.hpp"
 #include "RingBuf.h"
 #include "SdFat.h"
@@ -75,6 +76,7 @@ private:
     Battery battery;
     AttitudeController attCtrl;
     PositionController posCtrl;
+    WaypointManager waypointManager;
 
     elapsedMicros IMUTimer;
     bool gnssReading;

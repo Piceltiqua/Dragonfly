@@ -118,6 +118,13 @@ struct PosCtrlSetpoint {
     float velD;
 };
 
+struct Waypoint {
+    float posN;
+    float posE;
+    float posD;
+    float time;
+};
+
 struct ImuSample {
     uint32_t t_us;
     Eigen::Vector3f omega_NED;  // in NED frame (rad/s)

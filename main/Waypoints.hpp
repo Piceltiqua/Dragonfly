@@ -11,11 +11,12 @@ public:
 
     void init();
     void trajectoryControl(float flight_time);
-    void waypointParameters(const Waypoint& target, const Waypoint& start, float flight_time);
+    bool waypointParameters(const Waypoint& target, const Waypoint& start);
 private:
     PosCtrlSetpoint& position_setpoint_;
 
     std::vector<Waypoint> waypoints_;
+    bool invalid = false;
     size_t previous_waypoint_index_ = 0;
     size_t current_waypoint_index_ = 1;
 
@@ -27,7 +28,7 @@ private:
     float Ta = 0.0f; // Acceleration time
     float Td = 0.0f; // Deceleration time
     float Tc = 0.0f; // Cruise time
-    float S = 0.0f;  // Total distance
+    float S  = 0.0f; // Total distance
 
     // Unit direction vector components
     float ux = 0.0f;

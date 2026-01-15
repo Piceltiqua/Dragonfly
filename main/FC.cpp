@@ -6,7 +6,8 @@ FlightController::FlightController()
       command(actuators),
       battery(batteryStatus),
       attCtrl(attitude, attitudeSetpoint, actuators),
-      posCtrl(gnssData, positionSetpoint, attitudeSetpoint)
+      posCtrl(gnssData, positionSetpoint, attitudeSetpoint),
+      waypointManager(positionSetpoint)
 
 {
     attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
