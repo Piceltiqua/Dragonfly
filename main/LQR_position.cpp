@@ -1,86 +1,73 @@
 #include "LQR_position.hpp"
 
 void PositionController::init(){
-    x_intergral_ = 0.0f;
-    y_intergral_ = 0.0f;
-    z_intergral_ = 0.0f;
+    N_intergral_ = 0.0f;
+    E_intergral_ = 0.0f;
+    D_intergral_ = 0.0f;
 }
 
 void PositionController::control(float dt){
     // Increment integral error
-    x_intergral_ += (position_setpoint_.posN - current_gnss_.posN)*dt;
-    y_intergral_ += (position_setpoint_.posE - current_gnss_.posE)*dt;
-    z_intergral_ += - (position_setpoint_.posD - current_gnss_.posD)*dt;
+    N_intergral_ +=   (position_setpoint_.posN - current_gnss_.posN)*dt;
+    E_intergral_ +=   (position_setpoint_.posE - current_gnss_.posE)*dt;
+    D_intergral_ += - (position_setpoint_.posD - current_gnss_.posD)*dt;
 
     // Anti-windup
-    if (x_intergral_ > 0.5f) x_intergral_ = 0.5f;
-    if (x_intergral_ < -0.5f) x_intergral_ = -0.5f;
-    if (y_intergral_ > 0.5f) y_intergral_ = 0.5f;
-    if (y_intergral_ < -0.5f) y_intergral_ = -0.5f;
-    if (z_intergral_ > 0.5f) z_intergral_ = 0.5f;
-    if (z_intergral_ < -0.5f) z_intergral_ = -0.5f;
+    if (N_intergral_ > 0.5f) N_intergral_ = 0.5f;
+    if (N_intergral_ < -0.5f) N_intergral_ = -0.5f;
+    if (E_intergral_ > 0.5f) E_intergral_ = 0.5f;
+    if (E_intergral_ < -0.5f) E_intergral_ = -0.5f;
+    if (D_intergral_ > 0.5f) D_intergral_ = 0.5f;
+    if (D_intergral_ < -0.5f) D_intergral_ = -0.5f;
 
     Serial.print("PosN error: ");
     Serial.print(position_setpoint_.posN - current_gnss_.posN);
     Serial.print("\tVelN error: ");
     Serial.print(position_setpoint_.velN - current_gnss_.velN);
     Serial.print("\tPosN integral: ");
-    Serial.println(x_intergral_);
+    Serial.println(N_intergral_);
     Serial.print("PosE error: ");
     Serial.print(position_setpoint_.posE - current_gnss_.posE);
     Serial.print("\tVelE error: ");
     Serial.print(position_setpoint_.velE - current_gnss_.velE);
     Serial.print("\tPosE integral: ");
-    Serial.println(y_intergral_);
+    Serial.println(E_intergral_);
     Serial.print("PosD error: ");
     Serial.print(position_setpoint_.posD - current_gnss_.posD);
     Serial.print("\tVelD error: ");
     Serial.print(position_setpoint_.velD - current_gnss_.velD);
     Serial.print("\tPosD integral: ");
-    Serial.println(z_intergral_);
+    Serial.println(D_intergral_);
 
-    Eigen::Matrix<float, 3, 1> x;
-    x << current_gnss_.posN,
-         current_gnss_.velN,
-         - x_intergral_;
+    Eigen::Matrix<float, 6, 1> NE;
+    NE << current_gnss_.posN,   current_gnss_.posE,
+          current_gnss_.velN,   current_gnss_.velE,
+          N_intergral_,         E_intergral_;
 
-    Eigen::Matrix<float, 3, 1> x_sp;
-    x_sp << position_setpoint_.posN,
-            position_setpoint_.velN,
-            0;
+    Eigen::Matrix<float, 6, 1> NE_sp;
+    NE_sp << position_setpoint_.posN, position_setpoint_.posE,
+             position_setpoint_.velN, position_setpoint_.velE,
+             0,                       0;
 
-    Eigen::Matrix<float, 3, 1> e_x = x - x_sp;
-    Eigen::Matrix<float, 1, 1> u_x = -K_x_pos * e_x;
+    Eigen::Matrix<float, 6, 1> e_NE = NE - NE_sp;
+    Eigen::Matrix<float, 2, 1> u_NE = -K_NE_pos * e_NE;
 
-    Eigen::Matrix<float, 3, 1> y;
-    y << current_gnss_.posE,
-         current_gnss_.velE,
-         - y_intergral_;
-
-    Eigen::Matrix<float, 3, 1> y_sp;
-    y_sp << position_setpoint_.posE,
-            position_setpoint_.velE,
-            0;
-
-    Eigen::Matrix<float, 3, 1> e_y = y - y_sp;
-    Eigen::Matrix<float, 1, 1> u_y = -K_y_pos * e_y;
-
-    Eigen::Matrix<float, 3, 1> z;
-    z << - current_gnss_.posD,
+    Eigen::Matrix<float, 3, 1> D;
+    D << - current_gnss_.posD,
          - current_gnss_.velD,
-         - z_intergral_;
+         - D_intergral_;
 
-    Eigen::Matrix<float, 3, 1> z_sp;
-    z_sp << - position_setpoint_.posD,
+    Eigen::Matrix<float, 3, 1> D_sp;
+    D_sp << - position_setpoint_.posD,
             - position_setpoint_.velD,
             0;
 
-    Eigen::Matrix<float, 3, 1> e_z = z - z_sp;
-    Eigen::Matrix<float, 1, 1> u_z = -K_z_pos * e_z;
+    Eigen::Matrix<float, 3, 1> e_D = D - D_sp;
+    Eigen::Matrix<float, 1, 1> u_D = -K_D_pos * e_D;
 
     // Convert acceleration command to thrust command
-    
-    position_control_output_.thrustCommand = sqrt((u_z(0)+ m*g)*(u_z(0)+ m*g)+u_y(0)*u_y(0)+u_x(0)*u_x(0));
+    float thrust_N = m * sqrt((u_D(0) + g)*(u_D(0) + g)+u_NE(0)*u_NE(0)+u_NE(1)*u_NE(1));
+    position_control_output_.thrustCommand = 1000*thrust_N/9.81f;
 
     if (position_control_output_.thrustCommand == 0.0f){
         position_control_output_.attitudeSetpoint.pitch = 0.0f;
@@ -88,15 +75,22 @@ void PositionController::control(float dt){
         return;
     }
 
-    float x_command =   u_x(0)*m / position_control_output_.thrustCommand;
-    float y_command = - u_y(0)*m / position_control_output_.thrustCommand;
-    position_control_output_.attitudeSetpoint.pitch = min(max(x_command, -0.3f), 0.3f);
-    position_control_output_.attitudeSetpoint.yaw = min(max(y_command, -0.3f), 0.3f);
+    float N_command = u_NE(0)*m / position_control_output_.thrustCommand;
+    float E_command = u_NE(1)*m / position_control_output_.thrustCommand;
+
+    float pitch_command = ( - N_command * cos(DEG_TO_RAD * attitude_angle_.yaw)
+                            - E_command * sin(DEG_TO_RAD * attitude_angle_.yaw));
+
+    float yaw_command   = ( - N_command * sin(DEG_TO_RAD * attitude_angle_.yaw)
+                            + E_command * cos(DEG_TO_RAD * attitude_angle_.yaw));
+
+    position_control_output_.attitudeSetpoint.pitch = min(max(pitch_command, -0.3f), 0.3f);
+    position_control_output_.attitudeSetpoint.yaw = min(max(yaw_command, -0.3f), 0.3f);
 
     Serial.print("Thrust command: ");
     Serial.println(position_control_output_.thrustCommand);
     Serial.print("Pitch command (X): ");
-    Serial.println(position_control_output_.attitudeSetpoint.pitch);
+    Serial.println(pitch_command);
     Serial.print("Roll command (Y): ");
-    Serial.println(position_control_output_.attitudeSetpoint.yaw);
+    Serial.println(yaw_command);
 };

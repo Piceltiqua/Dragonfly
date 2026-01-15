@@ -63,6 +63,7 @@ private:
     void updateLedColorForRTKFix();
 
     Attitude attitude;
+    AttitudeAngle attitudeAngle;
     IMUAcceleration imuAcc;
     GNSSData gnssData;
     BatteryStatus batteryStatus;
