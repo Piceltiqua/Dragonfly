@@ -15,12 +15,12 @@ FlightController::FlightController()
     attitudeSetpoint.thrustCommand = 12.5f;
 
     // We target to hover at 1 meter above ground level
-    positionSetpoint.posN =  0.0f;
-    positionSetpoint.posE =  0.0f;
+    positionSetpoint.posN = 0.0f;
+    positionSetpoint.posE = 0.0f;
     positionSetpoint.posD = -1.0f;
-    positionSetpoint.velN =  0.0f;
-    positionSetpoint.velE =  0.0f;
-    positionSetpoint.velD =  0.0f;
+    positionSetpoint.velN = 0.0f;
+    positionSetpoint.velE = 0.0f;
+    positionSetpoint.velD = 0.0f;
 }
 
 void FlightController::setup() {
@@ -67,7 +67,7 @@ void FlightController::readSensors() {
 
         if (AttitudeControlled == true) {
             attCtrl.control();
-            command.commandGimbal(actuators.gimbalXAngle,actuators.gimbalYAngle);
+            command.commandGimbal(actuators.gimbalXAngle, actuators.gimbalYAngle);
         }
 
         battery.readVoltage();
@@ -84,6 +84,9 @@ void FlightController::readSensors() {
                 posCtrl.control(dt);
             }
             lastGNSStime = micros();
+
+            // Change LED color based on RTK fix type
+            updateLedColorForRTKFix();
         }
 
         // Write to SD
@@ -115,7 +118,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
         case MSG_FLY:
             // start flight
             // implement your flight start logic here
-            command.setLedColor(0, 0, 0);
             break;
 
         case MSG_LEG: {
@@ -123,7 +125,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 uint8_t val = payload[1];
                 // val will be 0x9D or 0xA9 per GUI
                 actuators.legsPosition = val;  // example: set state to deployed/
-                command.setLedColor(0, 0, 1);
                 if (val == LEGS_DEPLOYED) {
                     command.extendLegs();
                     attitudeSetpoint.momentArm = moment_arm_legs_down;
@@ -140,7 +141,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             if (payloadLen >= 3) {
                 uint16_t charge_mah = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
                 battery.setCharge(charge_mah);
-                command.setLedColor(0, 1, 0);
             }
 
             break;
@@ -156,11 +156,9 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                     attitudeSetpoint.attitudeSetpoint.yaw = 0.0f;
                     // Calibrer le controlleur d'attitude ici
                     // led color orange
-                    command.setLedColor(1, 0.5, 0);
                     Serial.println("Attitude controller enabled");
 
                 } else if (ctrl == 0xCC) {
-                    command.setLedColor(1, 0, 0);
                     AttitudeControlled = true;
                     PositionControlled = true;
                     posCtrl.init();
@@ -176,7 +174,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_ORIG:
             gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
-            command.setLedColor(1, 0, 1);
             tSetOrigin = micros();
             break;
 
@@ -190,13 +187,11 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
                 command.commandMotorsThrust(thrust1, thrust2);
                 // ctrlOutput.thrust = (thrust1) * 9.81f / 1000.0f; // total thrust in N
-                command.setLedColor(1, 1, 0);
             }
             break;
 
         case MSG_STOP:
             command.commandMotorsPercent(0, 0);  // stop motors immediately
-            command.setLedColor(1, 1, 1);
             break;
 
         case MSG_LAND:
@@ -215,7 +210,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 int8_t gimbalX = payload[1];  // gimbal angle in degrees (-6/+6)
                 int8_t gimbalY = payload[2];
                 command.commandGimbal(gimbalX, gimbalY);
-                command.setLedColor(1, 1, 0);
             }
             break;
 
@@ -276,6 +270,20 @@ void FlightController::printState() {
     Serial.println(gnssData.fixType);
 }
 
+void FlightController::updateLedColorForRTKFix() {
+    // LED color lookup table for different RTK fix types
+    if (gnssData.fixType >= 6) {
+        // Invalid fix type, default to No Fix color
+        command.setLedColor(1, 0, 0);
+    } else if (gnssData.fixType == 5) {
+        // Valid fix types 5
+        command.setLedColor(1, 1, 0);
+    } else {
+        // Valid fix types 4 and below
+        command.setLedColor(1, 1, 0);
+    }
+}
+
 void FlightController::smooth_imuread(float& wx, float& wy, float& wz) {
     // ring buffer implementation
     static std::vector<float> wx_buffer;
@@ -307,4 +315,3 @@ void FlightController::smooth_imuread(float& wx, float& wy, float& wz) {
     wy = wy_sum / wy_buffer.size();
     wz = wz_sum / wz_buffer.size();
 }
-
