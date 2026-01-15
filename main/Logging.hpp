@@ -78,7 +78,7 @@ public:
                        "%.4f,%.4f,"                           // GNSS horAcc, vertAcc
                        "%u,%u,"                               // numSV (uint8_t), fixType (uint8_t)
                        "%u,%d,%u,%u,"                         // battery currentDraw, currentConsumed, batteryVoltage, batteryLevel
-                       "%d,%d,%u,%d,%d",                      // actuators motor1, motor2, legs, gimbalX, gimbalY
+                       "%d,%u,%d,%d",                      // actuators motor1, motor2, legs, gimbalX, gimbalY
                        (unsigned long)time_us,
                        attitude.qw, attitude.qi, attitude.qj, attitude.qk,
                        attitude.wx, attitude.wy, attitude.wz,
@@ -93,8 +93,7 @@ public:
                        (int)batteryStatus.currentConsumed,
                        (unsigned int)batteryStatus.batteryVoltage,
                        (unsigned int)batteryStatus.batteryLevel,
-                       (int)actuators.motor1Throttle,
-                       (int)actuators.motor2Throttle,
+                       (int)actuators.motorThrust,
                        (unsigned int)actuators.legsPosition,
                        (int)actuators.servoXAngle,
                        (int)actuators.servoYAngle);

@@ -21,7 +21,7 @@ void Command::setup() {
 
 void Command::commandGimbal(float newGimbalAngleX, float newGimbalAngleY) {
     /*
-    Commands the TVC servos at 250Hz such that the gimbal reaches the specified angles.
+    Commands the TVC servos at 50Hz such that the gimbal reaches the specified angles.
     THE ANGLES GIVEN ARE NOT THE SERVO ANGLES.
     newGimbalAngleX: Desired angle for the X-axis (in degrees).
     newGimbalAngleY: Desired angle for the Y-axis (in degrees).
@@ -38,6 +38,11 @@ void Command::commandGimbal(float newGimbalAngleX, float newGimbalAngleY) {
     }
     if (newGimbalAngleY < -MAX_GIMBAL_ANGLE) {
         newGimbalAngleY = -MAX_GIMBAL_ANGLE;
+    }
+
+    // If no change in angles, return
+    if ((abs(newGimbalAngleX - currentGimbalAngleX) < 0.05f) && (abs(newGimbalAngleY - currentGimbalAngleY) < 0.05f)) {
+        return;
     }
 
     // If increasing angle motion
@@ -73,62 +78,26 @@ void Command::commandGimbal(float newGimbalAngleX, float newGimbalAngleY) {
     Serial.println(actuatorCmds_.servoYAngle);
 }
 
-void Command::commandMotorsPercent(int throttleMotor1, int throttleMotor2) {
-    /*
-    Commands the ESCs for the two BLDC motors.
-    throttleMotor1: Throttle for motor 1 (top motor) (0-100%).
-    throttleMotor2: Throttle for motor 2 (bottom motor) (0-100%).
-    */
-    if (throttleMotor1 > 100) {
-        throttleMotor1 = 100;
-    }
-    if (throttleMotor1 < 0) {
-        throttleMotor1 = 0;
-    }
-    if (throttleMotor2 > 100) {
-        throttleMotor2 = 100;
-    }
-    if (throttleMotor2 < 0) {
-        throttleMotor2 = 0;
-    }
-
-    timingMotor1 = map(throttleMotor1, 0, 100, 1100, 1940);
-    timingMotor2 = map(throttleMotor2, 0, 100, 1100, 1940);
-
-    motor1.writeMicroseconds(timingMotor1);
-    motor2.writeMicroseconds(timingMotor2);
-
-    actuatorCmds_.motor1Throttle = throttleMotor1;
-    actuatorCmds_.motor2Throttle = throttleMotor2;
-}
-
-void Command::commandMotorsThrust(float thrustMotor1, float thrustMotor2) {
+void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset) {
     /*
     Commands the ESCs for the two BLDC motors.
     throttleMotor1: Thrust command for motor 1 (top motor) (0-2060g).
     throttleMotor2: Thrust command for motor 2 (bottom motor) (0-2060g).
     */
-    if (thrustMotor1 > 2060.0) {
-        thrustMotor1 = 2060.0;
+    if (thrustMotor > 2060.0) {
+        thrustMotor = 2060.0;
     }
-    if (thrustMotor1 < 0.0) {
-        thrustMotor1 = 0.0;
-    }
-    if (thrustMotor2 > 2060.0) {
-        thrustMotor2 = 2060.0;
-    }
-    if (thrustMotor2 < 0.0) {
-        thrustMotor2 = 0.0;
+    if (thrustMotor < 0.0) {
+        thrustMotor = 0.0;
     }
 
-    timingMotor1 = thrustToTiming(thrustMotor1);
-    timingMotor2 = thrustToTiming(thrustMotor2);
+    timingMotor1 = thrustToTiming(thrustMotor) + rollTimingOffset;
+    timingMotor2 = thrustToTiming(thrustMotor) - rollTimingOffset;
 
     motor1.writeMicroseconds(timingMotor1);
     motor2.writeMicroseconds(timingMotor2);
 
-    actuatorCmds_.motor1Throttle = map(thrustMotor1, 0, 2060, 0, 100);
-    actuatorCmds_.motor2Throttle = map(thrustMotor2, 0, 2060, 0, 100);
+    actuatorCmds_.motorThrust = map(thrustMotor, 0, 2060, 0, 100);
 }
 
 int Command::thrustToTiming(float thrust_gram) {

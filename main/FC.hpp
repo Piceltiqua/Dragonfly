@@ -14,6 +14,7 @@
 #include "LQR_position.hpp"
 #include "Logging.hpp"
 #include "RingBuf.h"
+#include "Roll_control.hpp"
 #include "SdFat.h"
 #include "Utils.hpp"
 
@@ -75,6 +76,7 @@ private:
     Battery battery;
     AttitudeController attCtrl;
     PositionController posCtrl;
+    RollControl rollCtrl;
 
     elapsedMicros IMUTimer;
     bool gnssReading;

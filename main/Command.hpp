@@ -10,14 +10,14 @@ public:
     Command(ActuatorCommands& actuatorCmds) : actuatorCmds_(actuatorCmds) {}
     void setup();
     void commandGimbal(float angleX, float angleY);
-    void commandMotorsPercent(int throttleMotor1, int throttleMotor2);
-    void commandMotorsThrust(float thrustMotor1, float thrustMotor2);
+    void commandMotorsThrust(float thrustMotor, float rollTimingOffset);
     void extendLegs();
     void retractLegs();
     void setLedColor(bool red, bool green, bool blue);
 
 private:
     int thrustToTiming(float thrust_gram);
+    void doRollControlAndCommandMotor(float roll_rate_rps);
     Servo leg1;
     Servo leg2;
     Servo leg3;

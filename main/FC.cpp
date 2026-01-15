@@ -6,7 +6,8 @@ FlightController::FlightController()
       command(actuators),
       battery(batteryStatus),
       attCtrl(attitude, attitudeSetpoint, actuators),
-      posCtrl(gnssData, positionSetpoint, attitudeSetpoint)
+      posCtrl(gnssData, positionSetpoint, attitudeSetpoint),
+      rollCtrl(actuators)
 
 {
     attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
@@ -45,7 +46,7 @@ void FlightController::readSensors() {
     // Emergency stop
     if (digitalRead(BUTTON_PIN) == HIGH) {
         Serial.println("Emergency stop");
-        command.commandMotorsPercent(0, 0);
+        command.commandMotorsThrust(0, 0);
         while (true) {
             delay(1000);
         }
@@ -76,13 +77,15 @@ void FlightController::readSensors() {
 
         // Position loop
         if (gnss.read()) {
-            // Faire une loop pour vérifier le fix et attérir si pas de fix pendant trop longtemps
+            // Faire une loop pour vérifier le fix et atterrir si pas de fix pendant trop longtemps
             if (gnssData.fixType == 6) {
             }
             if (PositionControlled == true) {
                 float dt = (micros() - lastGNSStime) / 1e6f;
                 posCtrl.control(dt);
             }
+            int deltaTimingRoll = rollCtrl.computeRollTimingOffsets(attitude.wz);
+            command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
             lastGNSStime = micros();
         }
 
@@ -179,19 +182,14 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_ENG:
             if (payloadLen >= 3) {
-                uint8_t m1 = payload[1];  // throttle (%)
-                uint8_t m2 = payload[2];
-                // command.commandMotorsPercent(m1, m2);
-                float thrust1 = map(m1, 0, 100, 0, 2060);
-                float thrust2 = map(m2, 0, 100, 0, 2060);
+                uint8_t m = payload[1];  // throttle (%)
 
-                command.commandMotorsThrust(thrust1, thrust2);
-                // ctrlOutput.thrust = (thrust1) * 9.81f / 1000.0f; // total thrust in N
+                actuators.motorThrust = static_cast<int16_t>(-1.23e-3 * pow(m, 3) + 3.44e-1 * pow(m, 2) + 1.59 * m - 2.9);  // thrust in grams
             }
             break;
 
         case MSG_STOP:
-            command.commandMotorsPercent(0, 0);  // stop motors immediately
+            command.commandMotorsThrust(0, 0);  // stop motors immediately
             break;
 
         case MSG_LAND:
@@ -207,8 +205,10 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_GIMBAL:
             if (payloadLen >= 3) {
-                int8_t gimbalX = payload[1];  // gimbal angle in degrees (-6/+6)
+                int8_t gimbalX = payload[1];  // gimbal angle (+/- 5°)
                 int8_t gimbalY = payload[2];
+                actuators.gimbalXAngle = static_cast<float>(gimbalX);
+                actuators.gimbalYAngle = static_cast<float>(gimbalY);
                 command.commandGimbal(gimbalX, gimbalY);
             }
             break;
@@ -272,15 +272,15 @@ void FlightController::printState() {
 
 void FlightController::updateLedColorForRTKFix() {
     // LED color lookup table for different RTK fix types
-    if (gnssData.fixType >= 6) {
-        // Invalid fix type, default to No Fix color
-        command.setLedColor(1, 0, 0);
+    if (gnssData.fixType == 6) {
+        // RTK Fix, green
+        command.setLedColor(0, 1, 0);
     } else if (gnssData.fixType == 5) {
-        // Valid fix types 5
+        // RTK Float, yellow
         command.setLedColor(1, 1, 0);
     } else {
-        // Valid fix types 4 and below
-        command.setLedColor(1, 1, 0);
+        // No fix, red
+        command.setLedColor(1, 0, 0);
     }
 }
 

@@ -101,12 +101,15 @@ void FlightController::buildPackedPayload(uint8_t* buf, size_t& outLen) {
     memcpy(p, &UPTIME, sizeof(UPTIME));
     p += sizeof(UPTIME);
 
-    memcpy(p, &actuators.motor1Throttle, sizeof(actuators.motor1Throttle));
-    p += sizeof(actuators.motor1Throttle);
-    memcpy(p, &actuators.motor2Throttle, sizeof(actuators.motor2Throttle));
-    p += sizeof(actuators.motor2Throttle);
+    memcpy(p, &actuators.motorThrust, sizeof(actuators.motorThrust));
+    p += sizeof(actuators.motorThrust);
 
     *p++ = actuators.legsPosition;
+
+    memcpy(p, &actuators.gimbalXAngle, sizeof(actuators.gimbalXAngle));
+    p += sizeof(actuators.gimbalXAngle);
+    memcpy(p, &actuators.gimbalYAngle, sizeof(actuators.gimbalYAngle));
+    p += sizeof(actuators.gimbalYAngle);
 
     memcpy(p, &actuators.servoXAngle, sizeof(actuators.servoXAngle));
     p += sizeof(actuators.servoXAngle);

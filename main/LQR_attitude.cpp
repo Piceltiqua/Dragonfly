@@ -1,29 +1,31 @@
 #include "LQR_attitude.hpp"
 
-void AttitudeController::control(){
+void AttitudeController::control() {
+    attitute_control_output_.motorThrust = attitude_setpoint_.thrustCommand;
+
     quat_to_Euler(current_attitude_, attitude_angle_);
     Eigen::Matrix<float, 4, 1> x;
     x << attitude_angle_.pitch, attitude_angle_.yaw, current_attitude_.wx, current_attitude_.wy;
-    
+
     Eigen::Matrix<float, 4, 1> x_sp;
     // The target angular rates are set to zero
-    x_sp <<  attitude_setpoint_.attitudeSetpoint.pitch, attitude_setpoint_.attitudeSetpoint.yaw, 0.0f, 0.0f;
+    x_sp << attitude_setpoint_.attitudeSetpoint.pitch, attitude_setpoint_.attitudeSetpoint.yaw, 0.0f, 0.0f;
 
     Serial.print("Pitch error: ");
-    Serial.println(x(0) - x_sp(0));
+    Serial.println(x(0) - x_sp(0), 3);
     Serial.print("Yaw error: ");
-    Serial.println(x(1) - x_sp(1));
+    Serial.println(x(1) - x_sp(1), 3);
     Serial.print("Wx error: ");
-    Serial.println(x(3) - x_sp(3));
+    Serial.println(x(3) - x_sp(2), 3);
     Serial.print("Wy error: ");
-    Serial.println(x(2) - x_sp(2));
+    Serial.println(x(2) - x_sp(2), 3);
 
     Eigen::Matrix<float, 4, 1> e = x - x_sp;
     Eigen::Matrix<float, 2, 1> u = -K_att * e;
-    
+
     if (attitude_setpoint_.thrustCommand > 0.001f) {
-        attitute_control_output_.gimbalXAngle = - RAD_TO_DEG * u(0) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
-        attitute_control_output_.gimbalYAngle = - RAD_TO_DEG * u(1) / (attitude_setpoint_.thrustCommand  * attitude_setpoint_.momentArm);
+        attitute_control_output_.gimbalXAngle = -RAD_TO_DEG * u(0) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
+        attitute_control_output_.gimbalYAngle = -RAD_TO_DEG * u(1) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
     } else {
         attitute_control_output_.gimbalXAngle = 0.0f;
         attitute_control_output_.gimbalYAngle = 0.0f;
@@ -31,7 +33,6 @@ void AttitudeController::control(){
 };
 
 void AttitudeController::quat_to_Euler(Attitude& attitude_quat, AttitudeAngle& attitude_angle) {
-    
     float qw = attitude_quat.qw;
     float qi = attitude_quat.qi;
     float qj = attitude_quat.qj;
@@ -67,7 +68,7 @@ void AttitudeController::quat_to_Euler(Attitude& attitude_quat, AttitudeAngle& a
 
     const float EPS = 1e-8f;
     float roll_z, yaw_y;
-    
+
     if (std::fabs(cos_pitch) > EPS) {
         roll_z = std::atan2(-R12, R22);
         yaw_y = std::atan2(-R31, R33);
@@ -81,7 +82,10 @@ void AttitudeController::quat_to_Euler(Attitude& attitude_quat, AttitudeAngle& a
         yaw_y -= PI;
     }
 
-    attitude_angle.roll =  static_cast<float>(roll_z);
-    attitude_angle.pitch = - static_cast<float>(pitch_x);
+    attitude_angle.roll = static_cast<float>(roll_z);
+    attitude_angle.pitch = -static_cast<float>(pitch_x);
     attitude_angle.yaw = static_cast<float>(yaw_y);
+
+    Serial.print("Roll angle (deg) :");
+    Serial.println(attitude_angle.roll * RAD_TO_DEG);
 }
