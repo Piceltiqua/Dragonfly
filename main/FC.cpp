@@ -5,9 +5,10 @@ FlightController::FlightController()
       gnss(attitude, gnssData),
       command(actuators),
       battery(batteryStatus),
-      attCtrl(attitude, attitudeSetpoint, actuators),
-      posCtrl(gnssData, positionSetpoint, attitudeSetpoint),
-      rollCtrl(actuators)
+      attCtrl(attitude, attitudeAngle, attitudeSetpoint, actuators),
+      posCtrl(gnssData, attitudeAngle, positionSetpoint, attitudeSetpoint),
+      rollCtrl(actuators),
+      waypointManager(positionSetpoint)
 
 {
     attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
@@ -15,10 +16,9 @@ FlightController::FlightController()
     attitudeSetpoint.momentArm = moment_arm_legs_down;
     attitudeSetpoint.thrustCommand = 12.5f;
 
-    // We target to hover at 1 meter above ground level
     positionSetpoint.posN = 0.0f;
     positionSetpoint.posE = 0.0f;
-    positionSetpoint.posD = -1.0f;
+    positionSetpoint.posD = 0.0f;
     positionSetpoint.velN = 0.0f;
     positionSetpoint.velE = 0.0f;
     positionSetpoint.velD = 0.0f;
@@ -87,6 +87,9 @@ void FlightController::readSensors() {
             int deltaTimingRoll = rollCtrl.computeRollTimingOffsets(attitude.wz);
             command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
             lastGNSStime = micros();
+
+            // Change LED color based on RTK fix type
+            updateLedColorForRTKFix();
         }
 
         // Write to SD
@@ -105,9 +108,6 @@ void FlightController::readSensors() {
 
         sendTelemetry();
     }
-
-    // Change LED color based on RTK fix type
-    updateLedColorForRTKFix();
 }
 
 void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t payloadLen) {

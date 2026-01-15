@@ -17,6 +17,7 @@
 #include "Roll_control.hpp"
 #include "SdFat.h"
 #include "Utils.hpp"
+#include "Waypoints.hpp"
 
 // #include "AttitudeController.hpp"
 // #include "PositionController.hpp"
@@ -63,6 +64,7 @@ private:
     void updateLedColorForRTKFix();
 
     Attitude attitude;
+    AttitudeAngle attitudeAngle;
     IMUAcceleration imuAcc;
     GNSSData gnssData;
     BatteryStatus batteryStatus;
@@ -77,6 +79,7 @@ private:
     AttitudeController attCtrl;
     PositionController posCtrl;
     RollControl rollCtrl;
+    WaypointManager waypointManager;
 
     elapsedMicros IMUTimer;
     bool gnssReading;
