@@ -1,12 +1,11 @@
 #include "Waypoints.hpp"
-#include <Eigen/LU>
 
-void WaypointManager::init() {
+bool WaypointManager::init() {
     // Example waypoints: time (s), posN (m), posE (m), posD (m)
-    waypoints_.push_back({0.0f,  0.0f, 0.0f,  0.0f});
-    waypoints_.push_back({5.0f,  0.0f, 0.0f, -1.0f});
-    waypoints_.push_back({10.0f, 1.0f, 0.0f, -1.0f});
-    waypoints_.push_back({15.0f, 1.0f, 0.0f,  0.0f});
+    waypoints_.push_back(Waypoint{0.0f,  0.0f, 0.0f,  0.0f});
+    waypoints_.push_back(Waypoint{5.0f,  0.0f, 0.0f, -1.0f});
+    waypoints_.push_back(Waypoint{10.0f, 0.0f, 0.0f, -1.0f});
+    waypoints_.push_back(Waypoint{20.0f, 0.0f, 0.0f, -0.0f});
 
     // Check all waypoint segments for feasibility
     for (size_t i = 1; i < waypoints_.size(); ++i) {
@@ -14,16 +13,26 @@ void WaypointManager::init() {
         if (!valid) {
             invalid = true;
             Serial.println("Waypoint segment " + String(i-1) + " to " + String(i) + " is not feasible with given constraints.");
-            return;
+            return false;
         }
+    }
+
+    // Check if last waypoint is on the ground
+    const Waypoint& last_wp = waypoints_.back();
+    if (last_wp.posD < -0.0f) {
+        invalid = true;
+        Serial.println("Last waypoint must be on the ground (posD >= 0).");
+        return false;
     }
 
     previous_waypoint_index_ = 0;
     current_waypoint_index_ = 1;
     waypointParameters(waypoints_[current_waypoint_index_], waypoints_[previous_waypoint_index_]);
+
+    return true;
 }
 
-void WaypointManager::trajectoryControl(float flight_time) {
+bool WaypointManager::flying(float flight_time) {
     if (invalid) {
         position_setpoint_.posN = 0.0f;
         position_setpoint_.posE = 0.0f;
@@ -31,35 +40,37 @@ void WaypointManager::trajectoryControl(float flight_time) {
         position_setpoint_.velN = 0.0f;
         position_setpoint_.velE = 0.0f;
         position_setpoint_.velD = 0.0f;
-        return;
+        return false;
     }
 
     if (current_waypoint_index_ >= waypoints_.size()) {
         position_setpoint_.velN = 0.0f;
         position_setpoint_.velE = 0.0f;
         position_setpoint_.velD = 0.0f;
-        return;
+        return false;
     }
 
-    Waypoint& waypoint = waypoints_[current_waypoint_index_];
-    Waypoint& previous_waypoint = waypoints_[previous_waypoint_index_];
 
-    if (flight_time >= waypoint.time) {
-        // Move to next waypoint
+    // Advance waypoint if needed
+    if (flight_time >= waypoints_[current_waypoint_index_].time) {
+        previous_waypoint_index_++;
         current_waypoint_index_++;
-        previous_waypoint_index_ ++;
-        if (current_waypoint_index_ < waypoints_.size()) {
-            waypoint = waypoints_[current_waypoint_index_];
-            previous_waypoint = waypoints_[previous_waypoint_index_];
-            waypointParameters(waypoint, previous_waypoint);
-        } else {
-            // Last waypoint reached
+
+        if (current_waypoint_index_ >= waypoints_.size()) {
             position_setpoint_.velN = 0.0f;
             position_setpoint_.velE = 0.0f;
             position_setpoint_.velD = 0.0f;
-            return;
+            return false;
         }
+
+        waypointParameters(
+            waypoints_[current_waypoint_index_],
+            waypoints_[previous_waypoint_index_]
+        );
     }
+
+    const Waypoint& waypoint          = waypoints_[current_waypoint_index_];
+    const Waypoint& previous_waypoint = waypoints_[previous_waypoint_index_];
 
     float t = flight_time - previous_waypoint.time;
     if (t < Ta)                 {v = ACC_RATE * t;
@@ -78,6 +89,8 @@ void WaypointManager::trajectoryControl(float flight_time) {
     position_setpoint_.velN = v * ux;
     position_setpoint_.velE = v * uy;
     position_setpoint_.velD = v * uz;
+
+    return true;
 }
 
 bool WaypointManager::waypointParameters(const Waypoint& target, const Waypoint& start) {
@@ -106,7 +119,7 @@ bool WaypointManager::waypointParameters(const Waypoint& target, const Waypoint&
             return false;
     }
 
-    float Vc = (T - std::sqrt(T*T - 2.0f*C*S)) / C;
+    Vc = (T - std::sqrt(T*T - 2.0f*C*S)) / C;
 
     if (0 < Vc && Vc < MAX_VELOCITY) {
         Ta = Vc / ACC_RATE;

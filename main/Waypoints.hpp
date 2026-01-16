@@ -9,8 +9,8 @@ public:
     WaypointManager(PosCtrlSetpoint& position_setpoint)
         : position_setpoint_(position_setpoint) {}
 
-    void init();
-    void trajectoryControl(float flight_time);
+    bool init();
+    bool flying(float flight_time);
     bool waypointParameters(const Waypoint& target, const Waypoint& start);
 private:
     PosCtrlSetpoint& position_setpoint_;
@@ -20,7 +20,7 @@ private:
     size_t previous_waypoint_index_ = 0;
     size_t current_waypoint_index_ = 1;
 
-    static constexpr float MAX_VELOCITY = 1.0f; // m/s
+    static constexpr float MAX_VELOCITY = 0.5f; // m/s
     static constexpr float ACC_RATE = 0.2f;     // m/s²
     static constexpr float DEC_RATE = 0.2f;     // m/s²
 

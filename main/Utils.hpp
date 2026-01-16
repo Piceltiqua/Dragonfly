@@ -118,10 +118,10 @@ struct PosCtrlSetpoint {
 };
 
 struct Waypoint {
+    float time;
     float posN;
     float posE;
     float posD;
-    float time;
 };
 
 struct ImuSample {

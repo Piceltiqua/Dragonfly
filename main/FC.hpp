@@ -84,6 +84,7 @@ private:
     elapsedMicros IMUTimer;
     bool gnssReading;
     elapsedMicros telemTimer;
+    float flightStartTime = 0.0f;
     float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight
     float lastGNSStime = 0.0f;       // Time since last GNSS reading in us, used for position controller
 
@@ -95,6 +96,7 @@ private:
     bool RollControlled     = false;
     bool AttitudeControlled = false;
     bool PositionControlled = false;
+    bool InFlight           = false;
 
     // Telemetry constants
     bool isRecording = false;

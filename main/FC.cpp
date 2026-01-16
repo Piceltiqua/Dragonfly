@@ -16,7 +16,7 @@ FlightController::FlightController()
     attitudeSetpoint.momentArm = moment_arm_legs_down;
     attitudeSetpoint.thrustCommand = 0.0f;
 
-    positionSetpoint.posN = 1.0f;
+    positionSetpoint.posN = 0.0f;
     positionSetpoint.posE = 0.0f;
     positionSetpoint.posD = 0.0f;
     positionSetpoint.velN = 0.0f;
@@ -61,14 +61,14 @@ void FlightController::readSensors() {
     // Attitude loop
     if (IMUTimer >= IMU_PERIOD_US) {
         IMUTimer -= IMU_PERIOD_US;
-        flightTimeSeconds = (float)millis() / 1000.0f;
 
         imu.read();
         smooth_imuread(attitude.wx, attitude.wy, attitude.wz);
 
-        if (AttitudeControlled == true) {
+        if (AttitudeControlled) {
             attCtrl.control();
             command.commandGimbal(actuators.gimbalXAngle, actuators.gimbalYAngle);
+            command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
         }
 
         battery.readVoltage();
@@ -80,17 +80,31 @@ void FlightController::readSensors() {
             // Faire une loop pour vérifier le fix et atterrir si pas de fix pendant trop longtemps
             if (gnssData.fixType == 6) {
             }
-            if (PositionControlled == true) {
+            
+            if (InFlight) {
+                flightTimeSeconds = (static_cast<float>(millis()) - flightStartTime) / 1000.0f;
+                if (!waypointManager.flying(flightTimeSeconds)) {
+                    InFlight = false;
+                    PositionControlled = false;
+                    AttitudeControlled = false;
+                    RollControlled = false;
+
+                    deltaTimingRoll = rollCtrl.MOTOR_OFFSET;
+                    attitudeSetpoint.thrustCommand = 0.0f;
+                    actuators.motorThrust = 0;
+                    command.commandMotorsThrust(0, 0);  // stop motors immediately
+                    Serial.println("Flight complete.");
+                }
+            }
+            if (PositionControlled) {
                 float dt = (micros() - lastGNSStime) / 1e6f;
+                lastGNSStime = micros();
                 posCtrl.control(dt);
             }
-            if (RollControlled == true) {
+            if (RollControlled) {
                 deltaTimingRoll = rollCtrl.computeRollTimingOffsets(attitude.wz);
             }
-            // command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
-            lastGNSStime = micros();
-
-            // Change LED color based on RTK fix type
+            
             updateLedColorForRTKFix();
         }
 
@@ -122,7 +136,32 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
     switch (header) {
         case MSG_FLY:
             // start flight
-            // implement your flight start logic here
+            if (gnssData.fixType < 6) {
+                Serial.println("Cannot start flight: GNSS fix not sufficient.");
+                InFlight = false;
+                PositionControlled = false;
+                AttitudeControlled = false;
+                RollControlled = false;
+                deltaTimingRoll = rollCtrl.MOTOR_OFFSET;
+                return;
+            }
+            if (!waypointManager.init()) {
+                Serial.println("Waypoint initialization failed. Aborting flight start.");
+                InFlight = false;
+                PositionControlled = false;
+                AttitudeControlled = false;
+                RollControlled = false;
+                deltaTimingRoll = rollCtrl.MOTOR_OFFSET;
+                return;
+            }
+            flightStartTime = static_cast<float>(millis());
+            InFlight = true;
+            gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
+            PositionControlled = true;
+            posCtrl.init();
+            AttitudeControlled = true;
+            RollControlled = true;
+
             break;
 
         case MSG_LEG: {
@@ -153,22 +192,24 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             if (payloadLen >= 2) {
                 uint8_t ctrl = payload[1];
                 if (ctrl == 0xC3) {
-                    // enable attitude controller
+                    // Enable attitude controller
                     RollControlled     = true;
                     AttitudeControlled = true;
                     attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
                     attitudeSetpoint.attitudeSetpoint.yaw = 0.0f;
-                    // Calibrer le controlleur d'attitude ici
-                    // led color orange
                     Serial.println("Attitude controller enabled");
 
                 } else if (ctrl == 0xCC) {
+                    // Enable position controller
+                    RollControlled     = true;
                     AttitudeControlled = true;
                     PositionControlled = true;
+                    gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
                     posCtrl.init();
                     Serial.println("Position and attitude controller enabled");
 
                 } else if (ctrl == 0xB7) {
+                    // Disable all controllers
                     RollControlled     = false;
                     AttitudeControlled = false;
                     PositionControlled = false;
@@ -190,6 +231,7 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             break;
 
         case MSG_STOP:
+            InFlight = false;
             PositionControlled = false;
             attitudeSetpoint.thrustCommand = 0.0f;
             actuators.motorThrust = 0;

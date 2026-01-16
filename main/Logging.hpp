@@ -31,7 +31,7 @@ public:
         // GNSS position fields
         header += ",GNSS_r_ant_ned_x,GNSS_r_ant_ned_y,GNSS_r_ant_ned_z";
         header += ",GNSS_p_ant_ned_x,GNSS_p_ant_ned_y,GNSS_p_ant_ned_z";
-        header += ",GNSS_p_cg_ned_x,GNSS_p_cg_ned_y,GNSS_p_cg_ned_z";
+        header += ",GNSS_p_cg_ned_x,GNSS_p_cg_ned_y,GNSS_p_cg_ned_z";    0
 
         // GNSS velocity fields
         header += ",GNSS_v_cg_ned_x,GNSS_v_cg_ned_y,GNSS_v_cg_ned_z";

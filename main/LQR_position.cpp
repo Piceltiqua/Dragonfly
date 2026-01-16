@@ -1,48 +1,48 @@
 #include "LQR_position.hpp"
 
 void PositionController::init(){
-    N_intergral_ = 0.0f;
-    E_intergral_ = 0.0f;
-    D_intergral_ = 0.0f;
+    N_integral_ = 0.0f;
+    E_integral_ = 0.0f;
+    D_integral_ = 0.0f;
 }
 
 void PositionController::control(float dt){
     // Increment integral error
-    N_intergral_ +=   (position_setpoint_.posN - current_gnss_.posN)*dt;
-    E_intergral_ +=   (position_setpoint_.posE - current_gnss_.posE)*dt;
-    D_intergral_ += - (position_setpoint_.posD - current_gnss_.posD)*dt;
+    N_integral_ +=   (position_setpoint_.posN - current_gnss_.posN)*dt;
+    E_integral_ +=   (position_setpoint_.posE - current_gnss_.posE)*dt;
+    D_integral_ += - (position_setpoint_.posD - current_gnss_.posD)*dt;
 
     // Anti-windup
-    if (N_intergral_ > 0.5f) N_intergral_ = 0.5f;
-    if (N_intergral_ < -0.5f) N_intergral_ = -0.5f;
-    if (E_intergral_ > 0.5f) E_intergral_ = 0.5f;
-    if (E_intergral_ < -0.5f) E_intergral_ = -0.5f;
-    if (D_intergral_ > 0.5f) D_intergral_ = 0.5f;
-    if (D_intergral_ < -0.5f) D_intergral_ = -0.5f;
+    if (N_integral_ > 0.5f) N_integral_ = 0.5f;
+    if (N_integral_ < -0.5f) N_integral_ = -0.5f;
+    if (E_integral_ > 0.5f) E_integral_ = 0.5f;
+    if (E_integral_ < -0.5f) E_integral_ = -0.5f;
+    if (D_integral_ > 3.5f) D_integral_ = 3.5f;
+    if (D_integral_ < -0.1f) D_integral_ = -0.1f;
 
     Serial.print("PosN error: ");
     Serial.print(position_setpoint_.posN - current_gnss_.posN);
     Serial.print("\tVelN error: ");
     Serial.print(position_setpoint_.velN - current_gnss_.velN);
     Serial.print("\tPosN integral: ");
-    Serial.println(N_intergral_);
+    Serial.println(N_integral_);
     Serial.print("PosE error: ");
     Serial.print(position_setpoint_.posE - current_gnss_.posE);
     Serial.print("\tVelE error: ");
     Serial.print(position_setpoint_.velE - current_gnss_.velE);
     Serial.print("\tPosE integral: ");
-    Serial.println(E_intergral_);
+    Serial.println(E_integral_);
     Serial.print("PosD error: ");
     Serial.print(position_setpoint_.posD - current_gnss_.posD);
     Serial.print("\tVelD error: ");
     Serial.print(position_setpoint_.velD - current_gnss_.velD);
     Serial.print("\tPosD integral: ");
-    Serial.println(D_intergral_);
+    Serial.println(D_integral_);
 
     Eigen::Matrix<float, 6, 1> NE;
     NE << current_gnss_.posN,   current_gnss_.posE,
           current_gnss_.velN,   current_gnss_.velE,
-          N_intergral_,         E_intergral_;
+          N_integral_,         E_integral_;
 
     Eigen::Matrix<float, 6, 1> NE_sp;
     NE_sp << position_setpoint_.posN, position_setpoint_.posE,
@@ -55,7 +55,7 @@ void PositionController::control(float dt){
     Eigen::Matrix<float, 3, 1> D;
     D << - current_gnss_.posD,
          - current_gnss_.velD,
-         - D_intergral_;
+         - D_integral_;
 
     Eigen::Matrix<float, 3, 1> D_sp;
     D_sp << - position_setpoint_.posD,
@@ -66,7 +66,8 @@ void PositionController::control(float dt){
     Eigen::Matrix<float, 1, 1> u_D = -K_D_pos * e_D;
 
     // Convert acceleration command to thrust command
-    u_D(0) = max(u_D(0), -g); // prevent negative total thrust
+    u_D(0) = min(max(u_D(0), -g), 20.60f); // prevent negative total thrust
+
     float thrust_N = m * sqrt((u_D(0) + g)*(u_D(0) + g)+u_NE(0)*u_NE(0)+u_NE(1)*u_NE(1));
     position_control_output_.thrustCommand = 1000*thrust_N/9.81f;
 
