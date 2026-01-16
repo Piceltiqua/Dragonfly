@@ -68,14 +68,14 @@ void Command::commandGimbal(float newGimbalAngleX, float newGimbalAngleY) {
     gimbalX.writeMicroseconds(timingX);
     gimbalY.writeMicroseconds(timingY);
 
-    Serial.print("Gimbal X angle (deg): ");
-    Serial.println(newGimbalAngleX);
-    Serial.print("Gimbal Y angle (deg): ");
-    Serial.println(newGimbalAngleY);
-    Serial.print("Servo X angle (deg): ");
-    Serial.println(actuatorCmds_.servoXAngle);
-    Serial.print("Servo Y angle (deg): ");
-    Serial.println(actuatorCmds_.servoYAngle);
+    // Serial.print("Gimbal X angle (deg): ");
+    // Serial.println(newGimbalAngleX);
+    // Serial.print("Gimbal Y angle (deg): ");
+    // Serial.println(newGimbalAngleY);
+    // Serial.print("Servo X angle (deg): ");
+    // Serial.println(actuatorCmds_.servoXAngle);
+    // Serial.print("Servo Y angle (deg): ");
+    // Serial.println(actuatorCmds_.servoYAngle);
 }
 
 void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset) {

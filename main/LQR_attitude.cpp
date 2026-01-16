@@ -11,14 +11,14 @@ void AttitudeController::control() {
     // The target angular rates are set to zero
     x_sp << attitude_setpoint_.attitudeSetpoint.pitch, attitude_setpoint_.attitudeSetpoint.yaw, 0.0f, 0.0f;
 
-    Serial.print("Pitch error: ");
-    Serial.println(x(0) - x_sp(0), 3);
-    Serial.print("Yaw error: ");
-    Serial.println(x(1) - x_sp(1), 3);
-    Serial.print("Wx error: ");
-    Serial.println(x(2) - x_sp(2), 3);
-    Serial.print("Wy error: ");
-    Serial.println(x(3) - x_sp(3), 3);
+    // Serial.print("Pitch error: ");
+    // Serial.println(x(0) - x_sp(0), 3);
+    // Serial.print("Yaw error: ");
+    // Serial.println(x(1) - x_sp(1), 3);
+    // Serial.print("Wx error: ");
+    // Serial.println(x(2) - x_sp(2), 3);
+    // Serial.print("Wy error: ");
+    // Serial.println(x(3) - x_sp(3), 3);
 
     Eigen::Matrix<float, 4, 1> e = x - x_sp;
     Eigen::Matrix<float, 2, 1> u = -K_att * e;
@@ -88,6 +88,6 @@ void AttitudeController::quat_to_Euler(Attitude& attitude_quat, AttitudeAngle& a
     attitude_angle.pitch = -static_cast<float>(pitch_x);
     attitude_angle.yaw = static_cast<float>(yaw_y);
 
-    Serial.print("Roll angle (deg) :");
-    Serial.println(attitude_angle.roll * RAD_TO_DEG);
+    // Serial.print("Roll angle (deg) :");
+    // Serial.println(attitude_angle.roll * RAD_TO_DEG);
 }

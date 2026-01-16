@@ -135,7 +135,6 @@ private:
     bool sdInitialized = false;
     String filename;
     uint32_t tPreviousFlush = 0;
-    uint32_t tSetOrigin = 0;
 };
 
 #endif

@@ -16,7 +16,7 @@ FlightController::FlightController()
     attitudeSetpoint.momentArm = moment_arm_legs_down;
     attitudeSetpoint.thrustCommand = 0.0f;
 
-    positionSetpoint.posN = 0.0f;
+    positionSetpoint.posN = 1.0f;
     positionSetpoint.posE = 0.0f;
     positionSetpoint.posD = 0.0f;
     positionSetpoint.velN = 0.0f;
@@ -179,7 +179,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_ORIG:
             gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
-            tSetOrigin = micros();
             break;
 
         case MSG_ENG:

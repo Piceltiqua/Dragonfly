@@ -66,6 +66,7 @@ void PositionController::control(float dt){
     Eigen::Matrix<float, 1, 1> u_D = -K_D_pos * e_D;
 
     // Convert acceleration command to thrust command
+    u_D(0) = max(u_D(0), -g); // prevent negative total thrust
     float thrust_N = m * sqrt((u_D(0) + g)*(u_D(0) + g)+u_NE(0)*u_NE(0)+u_NE(1)*u_NE(1));
     position_control_output_.thrustCommand = 1000*thrust_N/9.81f;
 
@@ -78,11 +79,11 @@ void PositionController::control(float dt){
     float N_command = u_NE(0)*m / thrust_N;
     float E_command = u_NE(1)*m / thrust_N;
 
-    float pitch_command = ( - N_command * cos(DEG_TO_RAD * attitude_angle_.yaw)
-                            - E_command * sin(DEG_TO_RAD * attitude_angle_.yaw));
+    float yaw_command = ( - N_command * cos(attitude_angle_.roll)
+                          - E_command * sin(attitude_angle_.roll));
 
-    float yaw_command   = ( - N_command * sin(DEG_TO_RAD * attitude_angle_.yaw)
-                            + E_command * cos(DEG_TO_RAD * attitude_angle_.yaw));
+    float pitch_command   = ( N_command * sin(attitude_angle_.roll)
+                            - E_command * cos(attitude_angle_.roll));
 
     position_control_output_.attitudeSetpoint.pitch = min(max(pitch_command, -0.3f), 0.3f);
     position_control_output_.attitudeSetpoint.yaw = min(max(yaw_command, -0.3f), 0.3f);
@@ -96,7 +97,11 @@ void PositionController::control(float dt){
     Serial.print("Roll: ");
     Serial.println(attitude_angle_.roll);
     Serial.print("Pitch command (X): ");
-    Serial.println(pitch_command);
-    Serial.print("Roll command (Y): ");
-    Serial.println(yaw_command);
+    Serial.print(pitch_command);
+    Serial.print("\t Pitch: ");
+    Serial.println(attitude_angle_.pitch);
+    Serial.print("Yaw command (Y): ");
+    Serial.print(yaw_command);
+    Serial.print("\t Yaw: ");
+    Serial.println(attitude_angle_.yaw);
 };
