@@ -69,7 +69,7 @@ private:
     GNSSData gnssData;
     BatteryStatus batteryStatus;
     ActuatorCommands actuators;
-    PosCtrlOutput attitudeSetpoint;
+    PosCtrlOutput posCtrlOutput;
     PosCtrlSetpoint positionSetpoint;
 
     IMU imu;

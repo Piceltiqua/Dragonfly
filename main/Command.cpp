@@ -98,8 +98,6 @@ void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset) {
     motor1.writeMicroseconds(timingMotor1);
     motor2.writeMicroseconds(timingMotor2);
 
-    // actuatorCmds_.motorThrust = map(thrustMotor, 0, 2060, 0, 100);
-
     Serial.print("Motor thrust (g): ");
     Serial.println(thrustMotor);
     Serial.print("Motor 1 timing (us): ");

@@ -130,6 +130,14 @@ struct ImuSample {
     Eigen::Vector3f r_ant_ned;  // Projection of (0,0,0.475) from CAD to NED frame
 };
 
+struct ControlErrors {
+    float error_posN_m;
+    float error_posE_m;
+    float error_posD_m;
+    float error_pitch_deg;
+    float error_yaw_deg;
+};
+
 inline ImuSample newImuSample{0, Eigen::Vector3f::Zero(), Eigen::Vector3f::Zero()};
 inline std::deque<ImuSample> imu_buf;  // buffer to hold IMU samples for interpolation
 

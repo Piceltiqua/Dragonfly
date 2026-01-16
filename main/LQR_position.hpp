@@ -18,6 +18,10 @@ public:
     void init();
     void control(float dt);
 
+    float N_integral_ = 0.0f;
+    float E_integral_ = 0.0f;
+    float D_integral_ = 0.0f;
+
 private:
     GNSSData& current_gnss_;
     AttitudeAngle& attitude_angle_;
@@ -30,10 +34,6 @@ private:
                                      0, 0.8184f, 0, 1.3273f, 0, -0.1581f).finished();
     Eigen::Matrix<float, 1, 3 > K_D_pos = 
     (Eigen::Matrix<float, 1, 3>() << 3.9553f, 4.6091f, -1.1547f).finished(); 
-
-    float N_integral_ = 0.0f;
-    float E_integral_ = 0.0f;
-    float D_integral_ = 0.0f;
 
     float m = 1.3f; // mass in kg
     float g = 9.81f; // gravity in m/s^2

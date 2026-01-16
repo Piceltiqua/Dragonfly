@@ -86,14 +86,25 @@ void FlightController::writeToRingBuffer() {
     const GnssSnapshot& gnssSnap = gnss.getLastSnapshot();
     const ImuSnapshot& imuSnap = imu.getLastSnapshot();
 
+    // Compute control errors
+    ControlErrors errors;
+    errors.error_posN_m = positionSetpoint.posN - gnssData.posN;
+    errors.error_posE_m = positionSetpoint.posE - gnssData.posE;
+    errors.error_posD_m = positionSetpoint.posD - gnssData.posD;
+    errors.error_pitch_deg = (posCtrlOutput.attitudeSetpoint.pitch - attitudeAngle.pitch) * RAD_TO_DEG;  // rad to deg
+    errors.error_yaw_deg = (posCtrlOutput.attitudeSetpoint.yaw - attitudeAngle.yaw) * RAD_TO_DEG;        // rad to deg
+
     // Pack into CSV format using snprintf
     // Buffer must be large enough to hold the entire CSV line without truncation
-    char line[2048];  // Reduced size since EKF data is removed
+    char line[2048];
     size_t len = Logging::packSnapshotCsv(line, sizeof(line),
                                           (uint32_t)micros(),
                                           attitude, imuAcc, gnssData,
                                           batteryStatus, actuators,
-                                          gnssSnap, imuSnap);
+                                          gnssSnap, imuSnap,
+                                          positionSetpoint, posCtrlOutput,
+                                          posCtrl.N_integral_, posCtrl.E_integral_, posCtrl.D_integral_,
+                                          errors);
 
     // Check for errors: packSnapshotCsv returns 0 on failure or if truncated
     if (len <= 0 || len >= sizeof(line) - 1) {
@@ -137,10 +148,6 @@ void FlightController::writeBufferToSD() {
     }
 
     if (n >= 10240 && !dataFile.isBusy()) {
-        // Debug: aggressive drain
-        // Serial.print("[RB_AGGRESSIVE_DRAIN] Starting drain at bytesUsed=");
-        // Serial.println(n);
-
         // Write up to 4 sectors (2048 bytes) at a time to catch up
         for (int i = 0; i < 4; i++) {
             size_t remaining = rb.bytesUsed();
@@ -148,46 +155,17 @@ void FlightController::writeBufferToSD() {
 
             size_t bytesWrittenToSD = rb.writeOut(512);
             if (bytesWrittenToSD == 0) {
-                // Serial.print("[SD_FATAL_ERROR] At file position: ");
-                // Serial.println(dataFile.curPosition());
-                // handle fatal: stop recording
                 isRecording = false;
                 sdInitialized = false;
                 return;
             }
-
-            if (i == 3) {
-                // Serial.print("[RB_AGGRESSIVE_DRAIN] Wrote 4 sectors, bytesUsed now=");
-                // Serial.println(rb.bytesUsed());
-            }
         }
     } else if (n >= 512 && !dataFile.isBusy()) {
-        // Debug: Log before writeOut
-        if (sdWriteCallCount % 20 == 0) {
-            // Serial.print("[RB_WRITEOUT_START] n=");
-            // Serial.print(n);
-            // Serial.print(" writeSize=512 filePos=");
-            // Serial.println(dataFile.curPosition());
-        }
-
         // write out exactly 512 bytes from ring buffer into the file.
         // writeOut returns number bytes written, or 0 on failure.
         size_t bytesWrittenToSD = rb.writeOut(512);
 
-        // Debug: Log after writeOut
-        if (sdWriteCallCount % 20 == 0) {
-            // Serial.print("[RB_WRITEOUT_END] bytesWritten=");
-            // Serial.print(bytesWrittenToSD);
-            // Serial.print(" newBytesUsed=");
-            // Serial.print(rb.bytesUsed());
-            // Serial.print(" filePos=");
-            // Serial.println(dataFile.curPosition());
-        }
-
         if (bytesWrittenToSD == 0) {
-            // Serial.print("[SD_FATAL_ERROR] At file position: ");
-            // Serial.println(dataFile.curPosition());
-            // handle fatal: stop recording
             isRecording = false;
             sdInitialized = false;
             return;

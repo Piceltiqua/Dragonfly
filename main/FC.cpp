@@ -5,16 +5,16 @@ FlightController::FlightController()
       gnss(attitude, gnssData),
       command(actuators),
       battery(batteryStatus),
-      attCtrl(attitude, attitudeAngle, attitudeSetpoint, actuators),
-      posCtrl(gnssData, attitudeAngle, positionSetpoint, attitudeSetpoint),
+      attCtrl(attitude, attitudeAngle, posCtrlOutput, actuators),
+      posCtrl(gnssData, attitudeAngle, positionSetpoint, posCtrlOutput),
       rollCtrl(actuators),
       waypointManager(positionSetpoint)
 
 {
-    attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
-    attitudeSetpoint.attitudeSetpoint.yaw = 0.0f;
-    attitudeSetpoint.momentArm = moment_arm_legs_down;
-    attitudeSetpoint.thrustCommand = 0.0f;
+    posCtrlOutput.attitudeSetpoint.pitch = 0.0f;
+    posCtrlOutput.attitudeSetpoint.yaw = 0.0f;
+    posCtrlOutput.momentArm = moment_arm_legs_down;
+    posCtrlOutput.thrustCommand = 0.0f;
 
     positionSetpoint.posN = 0.0f;
     positionSetpoint.posE = 0.0f;
@@ -90,7 +90,7 @@ void FlightController::readSensors() {
                     RollControlled = false;
 
                     deltaTimingRoll = rollCtrl.MOTOR_OFFSET;
-                    attitudeSetpoint.thrustCommand = 0.0f;
+                    posCtrlOutput.thrustCommand = 0.0f;
                     actuators.motorThrust = 0;
                     command.commandMotorsThrust(0, 0);  // stop motors immediately
                     Serial.println("Flight complete.");
@@ -171,10 +171,10 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 actuators.legsPosition = val;  // example: set state to deployed/
                 if (val == LEGS_DEPLOYED) {
                     command.extendLegs();
-                    attitudeSetpoint.momentArm = moment_arm_legs_down;
+                    posCtrlOutput.momentArm = moment_arm_legs_down;
                 } else if (val == LEGS_RETRACTED) {
                     command.retractLegs();
-                    attitudeSetpoint.momentArm = moment_arm_legs_up;
+                    posCtrlOutput.momentArm = moment_arm_legs_up;
                 }
             }
             break;
@@ -195,8 +195,8 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                     // Enable attitude controller
                     RollControlled     = true;
                     AttitudeControlled = true;
-                    attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
-                    attitudeSetpoint.attitudeSetpoint.yaw = 0.0f;
+                    posCtrlOutput.attitudeSetpoint.pitch = 0.0f;
+                    posCtrlOutput.attitudeSetpoint.yaw = 0.0f;
                     Serial.println("Attitude controller enabled");
 
                 } else if (ctrl == 0xCC) {
@@ -225,15 +225,15 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
         case MSG_ENG:
             if (payloadLen >= 3) {
                 uint8_t m = payload[1];  // throttle (%)
-                attitudeSetpoint.thrustCommand = static_cast<int16_t>(-1.23e-3 * pow(m, 3) + 3.44e-1 * pow(m, 2) + 1.59 * m - 2.9);  // thrust in grams
-                actuators.motorThrust = attitudeSetpoint.thrustCommand;
+                posCtrlOutput.thrustCommand = static_cast<int16_t>(-1.23e-3 * pow(m, 3) + 3.44e-1 * pow(m, 2) + 1.59 * m - 2.9);  // thrust in grams
+                actuators.motorThrust = posCtrlOutput.thrustCommand;
             }
             break;
 
         case MSG_STOP:
             InFlight = false;
             PositionControlled = false;
-            attitudeSetpoint.thrustCommand = 0.0f;
+            posCtrlOutput.thrustCommand = 0.0f;
             actuators.motorThrust = 0;
             command.commandMotorsThrust(0, 0);  // stop motors immediately
             break;
