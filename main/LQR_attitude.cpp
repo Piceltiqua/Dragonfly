@@ -16,16 +16,18 @@ void AttitudeController::control() {
     Serial.print("Yaw error: ");
     Serial.println(x(1) - x_sp(1), 3);
     Serial.print("Wx error: ");
-    Serial.println(x(3) - x_sp(2), 3);
-    Serial.print("Wy error: ");
     Serial.println(x(2) - x_sp(2), 3);
+    Serial.print("Wy error: ");
+    Serial.println(x(3) - x_sp(3), 3);
 
     Eigen::Matrix<float, 4, 1> e = x - x_sp;
     Eigen::Matrix<float, 2, 1> u = -K_att * e;
+    
+    float thrust_N = attitude_setpoint_.thrustCommand * 9.81f / 1000.0f;
 
     if (attitude_setpoint_.thrustCommand > 0.001f) {
-        attitute_control_output_.gimbalXAngle = -RAD_TO_DEG * u(0) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
-        attitute_control_output_.gimbalYAngle = -RAD_TO_DEG * u(1) / (attitude_setpoint_.thrustCommand * attitude_setpoint_.momentArm);
+        attitute_control_output_.gimbalXAngle = -RAD_TO_DEG * u(0) / (thrust_N * attitude_setpoint_.momentArm);
+        attitute_control_output_.gimbalYAngle = -RAD_TO_DEG * u(1) / (thrust_N * attitude_setpoint_.momentArm);
     } else {
         attitute_control_output_.gimbalXAngle = 0.0f;
         attitute_control_output_.gimbalYAngle = 0.0f;

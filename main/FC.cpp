@@ -14,7 +14,7 @@ FlightController::FlightController()
     attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
     attitudeSetpoint.attitudeSetpoint.yaw = 0.0f;
     attitudeSetpoint.momentArm = moment_arm_legs_down;
-    attitudeSetpoint.thrustCommand = 12.5f;
+    attitudeSetpoint.thrustCommand = 0.0f;
 
     positionSetpoint.posN = 0.0f;
     positionSetpoint.posE = 0.0f;
@@ -84,8 +84,10 @@ void FlightController::readSensors() {
                 float dt = (micros() - lastGNSStime) / 1e6f;
                 posCtrl.control(dt);
             }
-            int deltaTimingRoll = rollCtrl.computeRollTimingOffsets(attitude.wz);
-            command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
+            if (RollControlled == true) {
+                deltaTimingRoll = rollCtrl.computeRollTimingOffsets(attitude.wz);
+            }
+            // command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
             lastGNSStime = micros();
 
             // Change LED color based on RTK fix type
@@ -136,7 +138,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                     attitudeSetpoint.momentArm = moment_arm_legs_up;
                 }
             }
-
             break;
         }
 
@@ -145,7 +146,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 uint16_t charge_mah = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
                 battery.setCharge(charge_mah);
             }
-
             break;
         }
 
@@ -154,6 +154,7 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 uint8_t ctrl = payload[1];
                 if (ctrl == 0xC3) {
                     // enable attitude controller
+                    RollControlled     = true;
                     AttitudeControlled = true;
                     attitudeSetpoint.attitudeSetpoint.pitch = 0.0f;
                     attitudeSetpoint.attitudeSetpoint.yaw = 0.0f;
@@ -168,11 +169,12 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                     Serial.println("Position and attitude controller enabled");
 
                 } else if (ctrl == 0xB7) {
+                    RollControlled     = false;
                     AttitudeControlled = false;
                     PositionControlled = false;
+                    deltaTimingRoll = rollCtrl.MOTOR_OFFSET;
                 }
             }
-
             break;
 
         case MSG_ORIG:
@@ -183,12 +185,15 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
         case MSG_ENG:
             if (payloadLen >= 3) {
                 uint8_t m = payload[1];  // throttle (%)
-
-                actuators.motorThrust = static_cast<int16_t>(-1.23e-3 * pow(m, 3) + 3.44e-1 * pow(m, 2) + 1.59 * m - 2.9);  // thrust in grams
+                attitudeSetpoint.thrustCommand = static_cast<int16_t>(-1.23e-3 * pow(m, 3) + 3.44e-1 * pow(m, 2) + 1.59 * m - 2.9);  // thrust in grams
+                actuators.motorThrust = attitudeSetpoint.thrustCommand;
             }
             break;
 
         case MSG_STOP:
+            PositionControlled = false;
+            attitudeSetpoint.thrustCommand = 0.0f;
+            actuators.motorThrust = 0;
             command.commandMotorsThrust(0, 0);  // stop motors immediately
             break;
 

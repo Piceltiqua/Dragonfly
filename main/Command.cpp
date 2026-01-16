@@ -47,17 +47,17 @@ void Command::commandGimbal(float newGimbalAngleX, float newGimbalAngleY) {
 
     // If increasing angle motion
     if (newGimbalAngleX >= currentGimbalAngleX) {
-        actuatorCmds_.servoXAngle = -2.034e-2 * pow(newGimbalAngleX, 3) + 3.762e-2 * pow(newGimbalAngleX, 2) - 5.142 * newGimbalAngleX + 10.97;
+        actuatorCmds_.servoXAngle = -2.034e-2 * pow(newGimbalAngleX, 3) + 3.762e-2 * pow(newGimbalAngleX, 2) - 5.142 * newGimbalAngleX;
     }
     if (newGimbalAngleY >= currentGimbalAngleY) {
-        actuatorCmds_.servoYAngle = -3.339e-2 * pow(newGimbalAngleY, 2) - 5.364 * newGimbalAngleY + 13.64;
+        actuatorCmds_.servoYAngle = -3.339e-2 * pow(newGimbalAngleY, 2) - 5.364 * newGimbalAngleY + 13;
     }
     // If decreasing angle motion
     if (newGimbalAngleX < currentGimbalAngleX) {
-        actuatorCmds_.servoXAngle = -8.894e-2 * pow(newGimbalAngleX, 2) - 5.128 * newGimbalAngleX + 8.112;
+        actuatorCmds_.servoXAngle = -8.894e-2 * pow(newGimbalAngleX, 2) - 5.128 * newGimbalAngleX - 3;
     }
     if (newGimbalAngleY < currentGimbalAngleY) {
-        actuatorCmds_.servoYAngle = -1.267e-2 * pow(newGimbalAngleY, 3) - 5.972e-2 * pow(newGimbalAngleY, 2) - 4.834 * newGimbalAngleY + 6.39;
+        actuatorCmds_.servoYAngle = -1.267e-2 * pow(newGimbalAngleY, 3) - 5.972e-2 * pow(newGimbalAngleY, 2) - 4.834 * newGimbalAngleY + 6;
     }
     currentGimbalAngleX = newGimbalAngleX;
     currentGimbalAngleY = newGimbalAngleY;
@@ -84,6 +84,7 @@ void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset) {
     throttleMotor1: Thrust command for motor 1 (top motor) (0-2060g).
     throttleMotor2: Thrust command for motor 2 (bottom motor) (0-2060g).
     */
+
     if (thrustMotor > 2060.0) {
         thrustMotor = 2060.0;
     }
@@ -91,13 +92,22 @@ void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset) {
         thrustMotor = 0.0;
     }
 
-    timingMotor1 = thrustToTiming(thrustMotor) + rollTimingOffset;
-    timingMotor2 = thrustToTiming(thrustMotor) - rollTimingOffset;
+    timingMotor1 = thrustToTiming(thrustMotor) - rollTimingOffset;
+    timingMotor2 = thrustToTiming(thrustMotor) + rollTimingOffset;
 
     motor1.writeMicroseconds(timingMotor1);
     motor2.writeMicroseconds(timingMotor2);
 
-    actuatorCmds_.motorThrust = map(thrustMotor, 0, 2060, 0, 100);
+    // actuatorCmds_.motorThrust = map(thrustMotor, 0, 2060, 0, 100);
+
+    Serial.print("Motor thrust (g): ");
+    Serial.println(thrustMotor);
+    Serial.print("Motor 1 timing (us): ");
+    Serial.println(timingMotor1);
+    Serial.print("Motor 2 timing (us): ");
+    Serial.println(timingMotor2);
+    Serial.print("Roll timing offset (us): ");
+    Serial.println(rollTimingOffset);
 }
 
 int Command::thrustToTiming(float thrust_gram) {

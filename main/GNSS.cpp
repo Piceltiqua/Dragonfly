@@ -140,7 +140,7 @@ bool GNSS::interpolateIMUSample() {
 
 String GNSS::getDateFilename() {
     String filename;
-    if (gnssData_.fixType < 4) {
+    if (gnssData_.fixType < 3) {
         // No valid fix, return default filename
         filename = String("NO_FIX_LOG_") + String(micros()) + String(".txt");
     } else {

@@ -87,8 +87,12 @@ private:
     float flightTimeSeconds = 0.0f;  // Used for countdown before flight and during flight
     float lastGNSStime = 0.0f;       // Time since last GNSS reading in us, used for position controller
 
-    float moment_arm_legs_down = 0.108f;
-    float moment_arm_legs_up = 0.070f;  // A modifier
+    float moment_arm_legs_down = 0.140f;
+    float moment_arm_legs_up = 0.180f;
+
+    int deltaTimingRoll = 0;
+
+    bool RollControlled     = false;
     bool AttitudeControlled = false;
     bool PositionControlled = false;
 

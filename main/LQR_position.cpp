@@ -75,8 +75,8 @@ void PositionController::control(float dt){
         return;
     }
 
-    float N_command = u_NE(0)*m / position_control_output_.thrustCommand;
-    float E_command = u_NE(1)*m / position_control_output_.thrustCommand;
+    float N_command = u_NE(0)*m / thrust_N;
+    float E_command = u_NE(1)*m / thrust_N;
 
     float pitch_command = ( - N_command * cos(DEG_TO_RAD * attitude_angle_.yaw)
                             - E_command * sin(DEG_TO_RAD * attitude_angle_.yaw));
@@ -89,6 +89,12 @@ void PositionController::control(float dt){
 
     Serial.print("Thrust command: ");
     Serial.println(position_control_output_.thrustCommand);
+    Serial.print("N command: ");
+    Serial.println(N_command);
+    Serial.print("E command: ");
+    Serial.println(E_command);
+    Serial.print("Roll: ");
+    Serial.println(attitude_angle_.roll);
     Serial.print("Pitch command (X): ");
     Serial.println(pitch_command);
     Serial.print("Roll command (Y): ");

@@ -12,13 +12,15 @@ public:
         roll_rate_rps: Current roll rate in radians per second.
         */
 
-        return static_cast<int>(Kp_roll * roll_rate_rps);
+        return static_cast<int>(Kp_roll * roll_rate_rps + MOTOR_OFFSET);  // Offset in microseconds
     }
+
+    static constexpr float MOTOR_OFFSET = 8.0f; 
 
 private:
     ActuatorCommands& actuatorCmds_;
 
-    static constexpr float Kp_roll = 12.0f;  // Proportional gain for roll control
+    static constexpr float Kp_roll = 50.0f;  // Proportional gain for roll control
 };
 
 #endif  // ROLLCONTROL_H
