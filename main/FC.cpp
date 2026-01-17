@@ -67,7 +67,7 @@ void FlightController::readSensors() {
 
         if (AttitudeControlled) {
             attCtrl.control();
-            command.commandGimbal(actuators.gimbalXAngle, actuators.gimbalYAngle);
+            // command.commandGimbal(actuators.gimbalXAngle, actuators.gimbalYAngle);
             command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
         }
 
@@ -89,7 +89,11 @@ void FlightController::readSensors() {
                     AttitudeControlled = false;
                     RollControlled = false;
 
-                    deltaTimingRoll = rollCtrl.MOTOR_OFFSET;
+                    if (actuators.legsPosition == LEGS_DEPLOYED) {
+                        deltaTimingRoll = rollCtrl.MOTOR_DEPLOYED_OFFSET;
+                    } else {
+                        deltaTimingRoll = rollCtrl.MOTOR_RETRACTED_OFFSET;
+                    }
                     posCtrlOutput.thrustCommand = 0.0f;
                     actuators.motorThrust = 0;
                     command.commandMotorsThrust(0, 0);  // stop motors immediately
@@ -102,7 +106,7 @@ void FlightController::readSensors() {
                 posCtrl.control(dt);
             }
             if (RollControlled) {
-                deltaTimingRoll = rollCtrl.computeRollTimingOffsets(attitude.wz);
+                deltaTimingRoll = rollCtrl.computeRollTimingOffsets(attitude.wz, actuators.legsPosition);
             }
             
             updateLedColorForRTKFix();
@@ -142,7 +146,11 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 PositionControlled = false;
                 AttitudeControlled = false;
                 RollControlled = false;
-                deltaTimingRoll = rollCtrl.MOTOR_OFFSET;
+                if (actuators.legsPosition == LEGS_DEPLOYED) {
+                    deltaTimingRoll = rollCtrl.MOTOR_DEPLOYED_OFFSET;
+                } else {
+                    deltaTimingRoll = rollCtrl.MOTOR_RETRACTED_OFFSET;
+                }
                 return;
             }
             if (!waypointManager.init()) {
@@ -151,7 +159,11 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                 PositionControlled = false;
                 AttitudeControlled = false;
                 RollControlled = false;
-                deltaTimingRoll = rollCtrl.MOTOR_OFFSET;
+                if (actuators.legsPosition == LEGS_DEPLOYED) {
+                    deltaTimingRoll = rollCtrl.MOTOR_DEPLOYED_OFFSET;
+                } else {
+                    deltaTimingRoll = rollCtrl.MOTOR_RETRACTED_OFFSET;
+                }
                 return;
             }
             flightStartTime = static_cast<float>(millis());
@@ -168,7 +180,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             if (payloadLen >= 2) {
                 uint8_t val = payload[1];
                 // val will be 0x9D or 0xA9 per GUI
-                actuators.legsPosition = val;  // example: set state to deployed/
                 if (val == LEGS_DEPLOYED) {
                     command.extendLegs();
                     posCtrlOutput.momentArm = moment_arm_legs_down;
@@ -213,7 +224,11 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
                     RollControlled     = false;
                     AttitudeControlled = false;
                     PositionControlled = false;
-                    deltaTimingRoll = rollCtrl.MOTOR_OFFSET;
+                    if (actuators.legsPosition == LEGS_DEPLOYED) {
+                        deltaTimingRoll = rollCtrl.MOTOR_DEPLOYED_OFFSET;
+                    } else {
+                        deltaTimingRoll = rollCtrl.MOTOR_RETRACTED_OFFSET;
+                    }
                 }
             }
             break;

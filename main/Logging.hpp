@@ -157,7 +157,7 @@ public:
         n += ret;
 
         // IMU fields
-        ret = snprintf(buf + n, bufSize - n, ",%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g",
+        ret = snprintf(buf + n, bufSize - n, ",%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g",
                        imu.q_imu_to_enu_w, imu.q_imu_to_enu_x, imu.q_imu_to_enu_y, imu.q_imu_to_enu_z,
                        imu.q_cad_to_ned_w, imu.q_cad_to_ned_x, imu.q_cad_to_ned_y, imu.q_cad_to_ned_z,
                        imu.acc_imu_x, imu.acc_imu_y, imu.acc_imu_z,

@@ -13,7 +13,7 @@ void Command::setup() {
     motor1.attach(2, 1100, 1940);
     motor2.attach(3, 1100, 1940);
 
-    extendLegs();
+    retractLegs();
 
     motor1.writeMicroseconds(1100);
     motor2.writeMicroseconds(1100);
@@ -130,12 +130,14 @@ int Command::thrustToTiming(float thrust_gram) {
 }
 
 void Command::extendLegs() {
+    actuatorCmds_.legsPosition = LEGS_DEPLOYED;
     leg1.writeMicroseconds(700);
     leg2.writeMicroseconds(700);
     leg3.writeMicroseconds(800);
 }
 
 void Command::retractLegs() {
+    actuatorCmds_.legsPosition = LEGS_RETRACTED;
     leg1.writeMicroseconds(2300);
     leg2.writeMicroseconds(2300);
     leg3.writeMicroseconds(2350);

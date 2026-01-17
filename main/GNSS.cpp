@@ -44,7 +44,7 @@ bool GNSS::read() {
 void GNSS::setReference(double lat0, double lon0, double alt0) {
     gnssData_.lat0 = lat0;
     gnssData_.lon0 = lon0;
-    gnssData_.alt0 = alt0;
+    gnssData_.alt0 = alt0 + r_ant_cad.z();
     N0 = a / sqrt(1 - e2 * sin(gnssData_.lat0) * sin(gnssData_.lat0));
     M0 = a * (1 - e2) / pow(1 - e2 * sin(gnssData_.lat0) * sin(gnssData_.lat0), 1.5);
     reference_ = true;
