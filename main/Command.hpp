@@ -10,6 +10,7 @@ public:
     Command(ActuatorCommands& actuatorCmds) : actuatorCmds_(actuatorCmds) {}
     void setup();
     void commandGimbal(float angleX, float angleY);
+    void adjustMotorThrustForBatteryVoltage(int16_t voltage_mV);
     void commandMotorsThrust(float thrustMotor, float rollTimingOffset);
     void extendLegs();
     void retractLegs();

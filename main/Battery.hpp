@@ -13,6 +13,7 @@ public:
         : batteryStatus_(batStatus) {}
     void setup();
     void readVoltage();
+    uint16_t readAverageVoltagemV();
     void readCurrent();
     void integrateCurrentDraw();
     void setCharge(uint16_t charge);

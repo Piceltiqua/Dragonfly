@@ -95,6 +95,7 @@ struct BatteryStatus {
 
 struct ActuatorCommands {
     int16_t motorThrust = 0;               // In gram-force
+    float thrustBatteryCoefficient = 1.0f; // Coefficient to adjust thrust based on battery voltage
     uint8_t legsPosition = LEGS_DEPLOYED;  // 0xA9: retracted, 0x9D: deployed
     float gimbalXAngle = 0.0f;
     float gimbalYAngle = 0.0f;

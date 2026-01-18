@@ -13,7 +13,7 @@ void Command::setup() {
     motor1.attach(2, 1100, 1940);
     motor2.attach(3, 1100, 1940);
 
-    retractLegs();
+    extendLegs();
 
     motor1.writeMicroseconds(1100);
     motor2.writeMicroseconds(1100);
@@ -98,18 +98,28 @@ void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset) {
     motor1.writeMicroseconds(timingMotor1);
     motor2.writeMicroseconds(timingMotor2);
 
-    Serial.print("Motor thrust (g): ");
-    Serial.println(thrustMotor);
-    Serial.print("Motor 1 timing (us): ");
-    Serial.println(timingMotor1);
-    Serial.print("Motor 2 timing (us): ");
-    Serial.println(timingMotor2);
-    Serial.print("Roll timing offset (us): ");
-    Serial.println(rollTimingOffset);
+    // Serial.print("Motor thrust (g): ");
+    // Serial.println(thrustMotor);
+    // Serial.print("Motor 1 timing (us): ");
+    // Serial.println(timingMotor1);
+    // Serial.print("Motor 2 timing (us): ");
+    // Serial.println(timingMotor2);
+    // Serial.print("Roll timing offset (us): ");
+    // Serial.println(rollTimingOffset);
+}
+
+void Command::adjustMotorThrustForBatteryVoltage(int16_t voltage_mV) {
+    if (voltage_mV >= 12377) {
+        actuatorCmds_.thrustBatteryCoefficient = 2.98e-4 * voltage_mV - 2.6;
+    } else {
+        actuatorCmds_.thrustBatteryCoefficient = 1.39e-4 * voltage_mV - 0.632;
+    }
 }
 
 int Command::thrustToTiming(float thrust_gram) {
     float timing_float = 1100.0;
+
+    thrust_gram = thrust_gram / actuatorCmds_.thrustBatteryCoefficient;
 
     if (thrust_gram >= 0 && thrust_gram < 400.0) {
         timing_float = 4.44e-6 * pow(thrust_gram, 3) - 3.65e-3 * pow(thrust_gram, 2) + 1.43 * thrust_gram + 1120.0;
@@ -131,7 +141,7 @@ int Command::thrustToTiming(float thrust_gram) {
 
 void Command::extendLegs() {
     actuatorCmds_.legsPosition = LEGS_DEPLOYED;
-    leg1.writeMicroseconds(700);
+    leg1.writeMicroseconds(650);
     leg2.writeMicroseconds(700);
     leg3.writeMicroseconds(800);
 }

@@ -26,7 +26,7 @@ public:
         header += "GNSS_velN_m/s,GNSS_velE_m/s,GNSS_velD_m/s,";
         header += "GNSS_HorAcc_m,GNSS_VertAcc_m,numSV,FixType,";
         header += "CurrentDraw_mA,CurrentConsumed_mAh,BatteryVoltage_mV,BatteryLevel_percent,";
-        header += "MotorThrust_gram,";
+        header += "MotorThrust_gram,ThrustVoltageCoefficient,";
         header += "LegsPosition_servo,ServoX_deg,ServoY_deg,GimbalX_deg,GimbalY_deg";
 
         // GNSS position fields
@@ -102,7 +102,7 @@ public:
                        "%.4f,%.4f,"                           // GNSS horAcc, vertAcc
                        "%u,%u,"                               // numSV (uint8_t), fixType (uint8_t)
                        "%u,%d,%u,%u,"                         // battery currentDraw, currentConsumed, batteryVoltage, batteryLevel
-                       "%d,%u,%d,%d,"                         // actuators motorThrust, legsPosition, servoX, servoY
+                       "%d,%.3f,%u,%d,%d,"                    // actuators motorThrust, thrustBatteryCoefficient legsPosition, servoX, servoY
                        "%.2f,%.2f",                           // gimbal angles
                        (unsigned long)time_us,
                        attitude.qw, attitude.qi, attitude.qj, attitude.qk,
@@ -118,7 +118,8 @@ public:
                        (int)batteryStatus.currentConsumed,
                        (unsigned int)batteryStatus.batteryVoltage,
                        (unsigned int)batteryStatus.batteryLevel,
-                       (int)actuators.motorThrust,
+                       (int)actuators.motorThrust, 
+                       actuators.thrustBatteryCoefficient,
                        (unsigned int)actuators.legsPosition,
                        (int)actuators.servoXAngle,
                        (int)actuators.servoYAngle,
@@ -157,7 +158,7 @@ public:
         n += ret;
 
         // IMU fields
-        ret = snprintf(buf + n, bufSize - n, ",%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g",
+        ret = snprintf(buf + n, bufSize - n, ",%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g",
                        imu.q_imu_to_enu_w, imu.q_imu_to_enu_x, imu.q_imu_to_enu_y, imu.q_imu_to_enu_z,
                        imu.q_cad_to_ned_w, imu.q_cad_to_ned_x, imu.q_cad_to_ned_y, imu.q_cad_to_ned_z,
                        imu.acc_imu_x, imu.acc_imu_y, imu.acc_imu_z,

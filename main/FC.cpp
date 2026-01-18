@@ -22,6 +22,10 @@ FlightController::FlightController()
     positionSetpoint.velN = 0.0f;
     positionSetpoint.velE = 0.0f;
     positionSetpoint.velD = 0.0f;
+
+    command.adjustMotorThrustForBatteryVoltage(battery.readAverageVoltagemV());
+    Serial.print("Thust Battery Coefficient : ");
+    Serial.println(actuators.thrustBatteryCoefficient);
 }
 
 void FlightController::setup() {
@@ -67,9 +71,9 @@ void FlightController::readSensors() {
 
         if (AttitudeControlled) {
             attCtrl.control();
-            // command.commandGimbal(actuators.gimbalXAngle, actuators.gimbalYAngle);
-            command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
+            command.commandGimbal(actuators.gimbalXAngle, actuators.gimbalYAngle);
         }
+        command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
 
         battery.readVoltage();
         battery.readCurrent();
@@ -102,9 +106,10 @@ void FlightController::readSensors() {
             }
             if (PositionControlled) {
                 float dt = (micros() - lastGNSStime) / 1e6f;
-                lastGNSStime = micros();
                 posCtrl.control(dt);
             }
+            lastGNSStime = micros();
+            
             if (RollControlled) {
                 deltaTimingRoll = rollCtrl.computeRollTimingOffsets(attitude.wz, actuators.legsPosition);
             }
@@ -139,7 +144,8 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
     // commands mapping:
     switch (header) {
         case MSG_FLY:
-            // start flight
+            command.adjustMotorThrustForBatteryVoltage(battery.readAverageVoltagemV());
+    
             if (gnssData.fixType < 6) {
                 Serial.println("Cannot start flight: GNSS fix not sufficient.");
                 InFlight = false;
@@ -235,6 +241,7 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_ORIG:
             gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
+            command.adjustMotorThrustForBatteryVoltage(battery.readAverageVoltagemV());
             break;
 
         case MSG_ENG:
