@@ -104,7 +104,7 @@ void FlightController::writeToRingBuffer() {
                                           gnssSnap, imuSnap,
                                           positionSetpoint, posCtrlOutput,
                                           posCtrl.N_integral_, posCtrl.E_integral_, posCtrl.D_integral_,
-                                          errors);
+                                          errors, attitudeAngle);
 
     // Check for errors: packSnapshotCsv returns 0 on failure or if truncated
     if (len <= 0 || len >= sizeof(line) - 1) {

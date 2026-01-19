@@ -20,6 +20,7 @@ public:
         // Original telemetry fields (preserved for backward compatibility)
         header += "time_us,";
         header += "Qw,Qx,Qy,Qz,Wx_rad/s,Wy_rad/s,Wz_rad/s,";
+        header += "roll_deg,pitch_deg,yaw_deg,";
         header += "accN_m/s2,accE_m/s2,accD_m/s2,";
         header += "GNSS_lat_deg,GNSS_lon_deg,GNSS_alt_m,";
         header += "GNSS_posN_m,GNSS_posE_m,GNSS_posD_m,";
@@ -87,7 +88,8 @@ public:
                                   float N_integral,
                                   float E_integral,
                                   float D_integral,
-                                  const ControlErrors& errors) {
+                                  const ControlErrors& errors,
+                                  const AttitudeAngle& attitudeAngle) {
         int n = 0;
         int ret = 0;  // snprintf return value
 
@@ -95,6 +97,7 @@ public:
         ret = snprintf(buf + n, bufSize - n,
                        "%lu,"                                 // micros
                        "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,"  // qw,qi,qj,qk,wx,wy,wz
+                       "%.3f,%.3f,%.3f,"                      // imu roll, pitch, yaw
                        "%.6f,%.6f,%.6f,"                      // imu ax,ay,az
                        "%.12f,%.12f,%.4f,"                    // GNSS lat(double), lon(double), alt(float)
                        "%.4f,%.4f,%.4f,"                      // GNSS posN,posE,posD
@@ -107,6 +110,7 @@ public:
                        (unsigned long)time_us,
                        attitude.qw, attitude.qi, attitude.qj, attitude.qk,
                        attitude.wx, attitude.wy, attitude.wz,
+                       attitudeAngle.roll, attitudeAngle.pitch, attitudeAngle.yaw,
                        imuAcc.ax_NED, imuAcc.ay_NED, imuAcc.az_NED,
                        gnssData.lat, gnssData.lon, gnssData.alt,
                        gnssData.posN, gnssData.posE, gnssData.posD,

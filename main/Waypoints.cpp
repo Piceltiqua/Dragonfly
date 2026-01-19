@@ -86,12 +86,12 @@ bool WaypointManager::flying(float flight_time) {
     position_setpoint_.posN = previous_waypoint.posN + s * ux;
     position_setpoint_.posE = previous_waypoint.posE + s * uy;
     position_setpoint_.posD = previous_waypoint.posD + s * uz;
-    position_setpoint_.velN = 0.0f;
-    position_setpoint_.velE = 0.0f;
-    position_setpoint_.velD = 0.0f;
-    // position_setpoint_.velN = v * ux;
-    // position_setpoint_.velE = v * uy;
-    // position_setpoint_.velD = v * uz;
+    // position_setpoint_.velN = 0.0f;
+    // position_setpoint_.velE = 0.0f;
+    // position_setpoint_.velD = 0.0f;
+    position_setpoint_.velN = v * ux;
+    position_setpoint_.velE = v * uy;
+    position_setpoint_.velD = v * uz;
 
     return true;
 }

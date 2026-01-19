@@ -33,7 +33,7 @@ private:
     (Eigen::Matrix<float, 2, 6>() << 0.8184f, 0, 1.3273f, 0, -0.1581f, 0,
                                      0, 0.8184f, 0, 1.3273f, 0, -0.1581f).finished();
     Eigen::Matrix<float, 1, 3 > K_D_pos = 
-    (Eigen::Matrix<float, 1, 3>() << 3.9553f, 4.6091f, -1.1547f).finished(); 
+    (Eigen::Matrix<float, 1, 3>() << 2.0f, 4.6091f, -1.1547f).finished(); 
 
     float m = 1.3f; // mass in kg
     float g = 9.81f; // gravity in m/s^2
