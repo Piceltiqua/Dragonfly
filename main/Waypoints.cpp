@@ -4,7 +4,7 @@ bool WaypointManager::init() {
     // Waypoints: time (s), posN (m), posE (m), posD (m)
     waypoints_.push_back(Waypoint{0.0f,  0.0f, 0.0f,  0.0f});
     waypoints_.push_back(Waypoint{1.0f,  0.0f, 0.0f,  0.0f});
-    waypoints_.push_back(Waypoint{7.0f,  0.0f, 0.0f, -1.0f});
+    waypoints_.push_back(Waypoint{6.0f,  0.0f, 0.0f, -1.0f});
     waypoints_.push_back(Waypoint{300.0f, 0.0f, 0.0f, -1.0f});
     waypoints_.push_back(Waypoint{325.0f, 0.0f, 0.0f, -0.0f});
     waypoints_.push_back(Waypoint{330.0f, 0.0f, 0.0f, -0.0f});
@@ -81,23 +81,19 @@ bool WaypointManager::flying(float flight_time) {
 
     float t = flight_time - previous_waypoint.time;
 
-    // Position and accelerations are not delayed
     if (t < Ta)                 {a = ACC_RATE;
+                                 v = ACC_RATE * t;
                                  s = 0.5f * ACC_RATE * t * t;}
     else if (t < Ta + Tc)       {a = 0;
+                                 v = Vc;
                                  s = 0.5f * ACC_RATE * Ta * Ta + Vc * (t - Ta);}
     else if (t < Ta + Tc + Td)  {a = -DEC_RATE;
+                                 v = Vc - DEC_RATE * (t - Ta - Tc);
                                  float td = t - Ta - Tc;
                                  s = 0.5f * ACC_RATE * Ta * Ta + Vc * Tc + Vc * td - 0.5f * DEC_RATE * td * td;}
     else                        {a = 0;
+                                 v = 0.0f;
                                  s = S;}
-
-    // Velocity setpoints are delayed by VEL_DELAY seconds
-    if (t - VEL_DELAY < 0)                  {v = 0.0f;}
-    else if (t - VEL_DELAY < Ta)            {v = ACC_RATE * (t - VEL_DELAY);}
-    else if (t - VEL_DELAY < Ta + Tc)       {v = Vc;}
-    else if (t - VEL_DELAY < Ta + Tc + Td)  {v = Vc - DEC_RATE * (t - VEL_DELAY - Ta - Tc);}
-    else                                    {v = 0.0f;}
 
     position_setpoint_.posN = previous_waypoint.posN + s * ux;
     position_setpoint_.posE = previous_waypoint.posE + s * uy;
@@ -114,7 +110,7 @@ bool WaypointManager::flying(float flight_time) {
 
 bool WaypointManager::waypointParameters(const Waypoint& target, const Waypoint& start) {
     // Define acceleration time, deceleration time, and cruise time and cruise velocity
-    float T = target.time - start.time - VEL_DELAY;
+    float T = target.time - start.time;
     float C = (1.0f / ACC_RATE) + (1.0f / DEC_RATE);
 
     float dx = target.posN - start.posN;

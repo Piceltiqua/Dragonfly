@@ -30,8 +30,8 @@ private:
 
     // Positon, speed, error_integral
     Eigen::Matrix<float, 2, 4 > K_NE_pos =
-    (Eigen::Matrix<float, 2, 4>() << 0.3416f,   0,          1.6380f,    0,
-                                     0,         0.3416f,    0,          1.6380f).finished();
+    (Eigen::Matrix<float, 2, 4>() << 0.5f,   0,          1.4f,    0,
+                                     0,         0.5f,    0,          1.4f).finished();
 
     Eigen::Matrix<float, 1, 3 > K_D_pos = 
     (Eigen::Matrix<float, 1, 3>() << 0.2f, 1.0f, 0.0f).finished(); 

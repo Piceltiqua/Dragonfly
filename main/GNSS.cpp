@@ -92,6 +92,7 @@ void GNSS::computeCGVelocityNED() {
     gnssData_.velN = alpha * v_cg_ned.x() + (1 - alpha) * gnssData_.velN;
     gnssData_.velE = alpha * v_cg_ned.y() + (1 - alpha) * gnssData_.velE;
     gnssData_.velD = alpha * v_cg_ned.z() + (1 - alpha) * gnssData_.velD;
+    
     // Store snapshot for logging
     last_snapshot_.v_cg_ned_x = v_cg_ned.x();
     last_snapshot_.v_cg_ned_y = v_cg_ned.y();

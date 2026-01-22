@@ -23,7 +23,6 @@ private:
     static constexpr float MAX_VELOCITY = 0.5f; // m/s
     static constexpr float ACC_RATE = 0.2f;     // m/s²
     static constexpr float DEC_RATE = 0.2f;     // m/s²
-    static constexpr float VEL_DELAY = 0.6f;    // s
 
     float Vc = 0.0f; // Cruise velocity
     float Ta = 0.0f; // Acceleration time

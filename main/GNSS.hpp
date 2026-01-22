@@ -40,7 +40,7 @@ private:
     static constexpr double f = 1.0 / 298.257223563;
     static constexpr double e2 = f * (2.0 - f);
     static constexpr uint32_t GNSS_VEL_LATENCY_US = 130000;
-    static constexpr float alpha = 0.2f;  // velocity low-pass filter coefficient
+    static constexpr float alpha = 1.0f;  // velocity low-pass filter coefficient
 
     void computeCGPositionNED();
     void computeCGVelocityNED();
