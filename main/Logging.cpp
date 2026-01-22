@@ -99,6 +99,7 @@ void FlightController::writeToRingBuffer() {
     char line[2048];
     size_t len = Logging::packSnapshotCsv(line, sizeof(line),
                                           (uint32_t)micros(),
+                                          flightTimeSeconds,
                                           attitude, imuAcc, gnssData,
                                           batteryStatus, actuators,
                                           gnssSnap, imuSnap,

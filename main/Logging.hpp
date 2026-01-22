@@ -18,7 +18,7 @@ public:
     static String generateCsvHeader() {
         String header;
         // Original telemetry fields (preserved for backward compatibility)
-        header += "time_us,";
+        header += "time_us,flightTime_s,";
         header += "Qw,Qx,Qy,Qz,Wx_rad/s,Wy_rad/s,Wz_rad/s,";
         header += "roll_deg,pitch_deg,yaw_deg,";
         header += "accN_m/s2,accE_m/s2,accD_m/s2,";
@@ -27,7 +27,7 @@ public:
         header += "GNSS_velN_m/s,GNSS_velE_m/s,GNSS_velD_m/s,";
         header += "GNSS_HorAcc_m,GNSS_VertAcc_m,numSV,FixType,";
         header += "CurrentDraw_mA,CurrentConsumed_mAh,BatteryVoltage_mV,BatteryLevel_percent,";
-        header += "MotorThrust_gram,ThrustVoltageCoefficient,";
+        header += "MotorThrust_gram,ThrustVoltageCoefficient,timingMotor1_us,timingMotor2_us,";
         header += "LegsPosition_servo,ServoX_deg,ServoY_deg,GimbalX_deg,GimbalY_deg";
 
         // GNSS position fields
@@ -52,6 +52,7 @@ public:
         // Position control setpoints
         header += ",PosSetpoint_N_m,PosSetpoint_E_m,PosSetpoint_D_m";
         header += ",VelSetpoint_N_m/s,VelSetpoint_E_m/s,VelSetpoint_D_m/s";
+        header += ",AccSetpoint_N_m/s2,AccSetpoint_E_m/s2,AccSetpoint_D_m/s2";
 
         // Attitude control setpoints
         header += ",AttSetpoint_pitch_deg,AttSetpoint_yaw_deg";
@@ -76,6 +77,7 @@ public:
      */
     static size_t packSnapshotCsv(char* buf, size_t bufSize,
                                   uint32_t time_us,
+                                  float flightTimeSeconds,
                                   const Attitude& attitude,
                                   const IMUAcceleration& imuAcc,
                                   const GNSSData& gnssData,
@@ -95,7 +97,7 @@ public:
 
         // Original telemetry fields
         ret = snprintf(buf + n, bufSize - n,
-                       "%lu,"                                 // micros
+                       "%lu,%.3f,"                            // micros, flight time seconds
                        "%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,"  // qw,qi,qj,qk,wx,wy,wz
                        "%.3f,%.3f,%.3f,"                      // imu roll, pitch, yaw
                        "%.6f,%.6f,%.6f,"                      // imu ax,ay,az
@@ -105,9 +107,9 @@ public:
                        "%.4f,%.4f,"                           // GNSS horAcc, vertAcc
                        "%u,%u,"                               // numSV (uint8_t), fixType (uint8_t)
                        "%u,%d,%u,%u,"                         // battery currentDraw, currentConsumed, batteryVoltage, batteryLevel
-                       "%d,%.3f,%u,%d,%d,"                    // actuators motorThrust, thrustBatteryCoefficient legsPosition, servoX, servoY
+                       "%d,%.3f,%d,%d,%d,%d,%d,"              // actuators motorThrust, thrustBatteryCoefficient, motor1Timing, motor2Timing, legsPosition, servoX, servoY
                        "%.2f,%.2f",                           // gimbal angles
-                       (unsigned long)time_us,
+                       (unsigned long)time_us, flightTimeSeconds,
                        attitude.qw, attitude.qi, attitude.qj, attitude.qk,
                        attitude.wx, attitude.wy, attitude.wz,
                        attitudeAngle.roll, attitudeAngle.pitch, attitudeAngle.yaw,
@@ -124,6 +126,7 @@ public:
                        (unsigned int)batteryStatus.batteryLevel,
                        (int)actuators.motorThrust, 
                        actuators.thrustBatteryCoefficient,
+                       actuators.motor1Timing, actuators.motor2Timing,
                        (unsigned int)actuators.legsPosition,
                        (int)actuators.servoXAngle,
                        (int)actuators.servoYAngle,
@@ -177,9 +180,10 @@ public:
         n += ret;
 
         // Position control setpoints
-        ret = snprintf(buf + n, bufSize - n, ",%.3f,%.3f,%.3f,%.3f,%.3f,%.3f",
+        ret = snprintf(buf + n, bufSize - n, ",%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f",
                        posSetpoint.posN, posSetpoint.posE, posSetpoint.posD,
-                       posSetpoint.velN, posSetpoint.velE, posSetpoint.velD);
+                       posSetpoint.velN, posSetpoint.velE, posSetpoint.velD,
+                       posSetpoint.accffN, posSetpoint.accffE, posSetpoint.accffD);
         if (ret < 0 || n + ret >= (int)bufSize) {
             Serial.print("[SNPRINTF_FAIL] Component=POS_SETPOINT ret=");
             Serial.println(ret);

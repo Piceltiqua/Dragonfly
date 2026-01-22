@@ -47,7 +47,7 @@ void Command::commandGimbal(float newGimbalAngleX, float newGimbalAngleY) {
 
     // If increasing angle motion
     if (newGimbalAngleX >= currentGimbalAngleX) {
-        actuatorCmds_.servoXAngle = -2.034e-2 * pow(newGimbalAngleX, 3) + 3.762e-2 * pow(newGimbalAngleX, 2) - 5.142 * newGimbalAngleX;
+        actuatorCmds_.servoXAngle = -2.034e-2 * pow(newGimbalAngleX, 3) + 3.762e-2 * pow(newGimbalAngleX, 2) - 5.142 * newGimbalAngleX - 0;
     }
     if (newGimbalAngleY >= currentGimbalAngleY) {
         actuatorCmds_.servoYAngle = -3.339e-2 * pow(newGimbalAngleY, 2) - 5.364 * newGimbalAngleY + 13;
@@ -67,23 +67,16 @@ void Command::commandGimbal(float newGimbalAngleX, float newGimbalAngleY) {
 
     gimbalX.writeMicroseconds(timingX);
     gimbalY.writeMicroseconds(timingY);
-
-    // Serial.print("Gimbal X angle (deg): ");
-    // Serial.println(newGimbalAngleX);
-    // Serial.print("Gimbal Y angle (deg): ");
-    // Serial.println(newGimbalAngleY);
-    // Serial.print("Servo X angle (deg): ");
-    // Serial.println(actuatorCmds_.servoXAngle);
-    // Serial.print("Servo Y angle (deg): ");
-    // Serial.println(actuatorCmds_.servoYAngle);
 }
 
-void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset) {
+void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset, float batteryVoltage_mV = 0.0f) {
     /*
     Commands the ESCs for the two BLDC motors.
     throttleMotor1: Thrust command for motor 1 (top motor) (0-2060g).
     throttleMotor2: Thrust command for motor 2 (bottom motor) (0-2060g).
     */
+
+    adjustMotorThrustForBatteryVoltage(batteryVoltage_mV);
 
     if (thrustMotor > 2060.0) {
         thrustMotor = 2060.0;
@@ -92,34 +85,21 @@ void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset) {
         thrustMotor = 0.0;
     }
 
-    timingMotor1 = thrustToTiming(thrustMotor) - rollTimingOffset;
-    timingMotor2 = thrustToTiming(thrustMotor) + rollTimingOffset;
+    thrustMotor = thrustMotor / actuatorCmds_.thrustBatteryCoefficient;
 
-    motor1.writeMicroseconds(timingMotor1);
-    motor2.writeMicroseconds(timingMotor2);
+    actuatorCmds_.motor1Timing = thrustToTiming(thrustMotor) - rollTimingOffset;
+    actuatorCmds_.motor2Timing = thrustToTiming(thrustMotor) + rollTimingOffset;
 
-    // Serial.print("Motor thrust (g): ");
-    // Serial.println(thrustMotor);
-    // Serial.print("Motor 1 timing (us): ");
-    // Serial.println(timingMotor1);
-    // Serial.print("Motor 2 timing (us): ");
-    // Serial.println(timingMotor2);
-    // Serial.print("Roll timing offset (us): ");
-    // Serial.println(rollTimingOffset);
+    motor1.writeMicroseconds(actuatorCmds_.motor1Timing);
+    motor2.writeMicroseconds(actuatorCmds_.motor2Timing);
 }
 
-void Command::adjustMotorThrustForBatteryVoltage(int16_t voltage_mV) {
-    if (voltage_mV >= 12377) {
-        actuatorCmds_.thrustBatteryCoefficient = 2.98e-4 * voltage_mV - 2.6;
-    } else {
-        actuatorCmds_.thrustBatteryCoefficient = 1.39e-4 * voltage_mV - 0.632;
-    }
+void Command::adjustMotorThrustForBatteryVoltage(float batteryVoltage_mV) {
+    actuatorCmds_.thrustBatteryCoefficient = 1.5e-4 * batteryVoltage_mV - 0.6624;
 }
 
 int Command::thrustToTiming(float thrust_gram) {
     float timing_float = 1100.0;
-
-    thrust_gram = thrust_gram / actuatorCmds_.thrustBatteryCoefficient;
 
     if (thrust_gram >= 0 && thrust_gram < 400.0) {
         timing_float = 4.44e-6 * pow(thrust_gram, 3) - 3.65e-3 * pow(thrust_gram, 2) + 1.43 * thrust_gram + 1120.0;

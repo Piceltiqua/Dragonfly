@@ -21,8 +21,6 @@ bool GNSS::read() {
         gnssData_.horAcc = ubx.horz_acc_m();
         gnssData_.vertAcc = ubx.vert_acc_m();
         gnssData_.numSV = ubx.num_sv();
-        // Serial.print("GNSS SPEED ACCURACY : ");
-        // Serial.println(ubx.spd_acc_mps(), 4);
         gnssData_.fixType = static_cast<int>(ubx.fix());
 
         if (!reference_ && gnssData_.fixType == 6) {
@@ -118,7 +116,6 @@ bool GNSS::interpolateIMUSample() {
         ++i;
     }
 
-    // Serial.println("1");
     if (i + 1 >= imu_buf.size()) return false;  // requested time too new
 
     const ImuSample& sampleBefore = imu_buf[i];
@@ -127,7 +124,6 @@ bool GNSS::interpolateIMUSample() {
     if (t_GNSS_read_us < sampleBefore.t_us || t_GNSS_read_us > sampleAfter.t_us) return false;
     double dtAB = double(sampleAfter.t_us - sampleBefore.t_us);
 
-    // Serial.println("3");
     if (dtAB <= 0.0) return false;
     double alpha = double(t_GNSS_read_us - sampleBefore.t_us) / dtAB;
 

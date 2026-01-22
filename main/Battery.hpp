@@ -13,7 +13,6 @@ public:
         : batteryStatus_(batStatus) {}
     void setup();
     void readVoltage();
-    uint16_t readAverageVoltagemV();
     void readCurrent();
     void integrateCurrentDraw();
     void setCharge(uint16_t charge);
@@ -26,6 +25,12 @@ private:
     float currentDraw = 0.0f;
     float currentConsumed = 0.0f;
     unsigned long lastIntegrationTime = 0;
+
+    static constexpr size_t VOLTAGE_AVG_WINDOW = 10;
+    float voltageSamples_[VOLTAGE_AVG_WINDOW] = {0.0f};
+    float voltageSum_ = 0.0f;
+    size_t voltageIndex_ = 0;
+    size_t voltageCount_ = 0;
 };
 
 #endif

@@ -87,7 +87,4 @@ void AttitudeController::quat_to_Euler(Attitude& attitude_quat, AttitudeAngle& a
     attitude_angle.roll = static_cast<float>(roll_z);
     attitude_angle.pitch = -static_cast<float>(pitch_x);
     attitude_angle.yaw = static_cast<float>(yaw_y);
-
-    // Serial.print("Roll angle (deg) :");
-    // Serial.println(attitude_angle.roll * RAD_TO_DEG);
 }

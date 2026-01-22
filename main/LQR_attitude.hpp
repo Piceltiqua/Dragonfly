@@ -29,8 +29,8 @@ private:
     ActuatorCommands& attitute_control_output_;
 
     Eigen::Matrix<float, 2, 4> K_att = 
-    (Eigen::Matrix<float, 2, 4>() << 0.5345f, -0.0000f,  0.2484f, -0.0000f,
-                                    -0.0000f,  0.5345f, -0.0000f,  0.2484f).finished();
+    (Eigen::Matrix<float, 2, 4>() << 0.7071f, -0.0000f,  0.3216f, -0.0000f,
+                                    -0.0000f,  0.7071f, -0.0000f,  0.3216f).finished();
 };
 
 #endif

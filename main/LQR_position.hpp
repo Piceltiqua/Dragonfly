@@ -29,13 +29,14 @@ private:
     PosCtrlOutput& position_control_output_;
 
     // Positon, speed, error_integral
-    Eigen::Matrix<float, 2, 6 > K_NE_pos =
-    (Eigen::Matrix<float, 2, 6>() << 0.8184f, 0, 1.3273f, 0, -0.1581f, 0,
-                                     0, 0.8184f, 0, 1.3273f, 0, -0.1581f).finished();
-    Eigen::Matrix<float, 1, 3 > K_D_pos = 
-    (Eigen::Matrix<float, 1, 3>() << 2.0f, 4.6091f, -1.1547f).finished(); 
+    Eigen::Matrix<float, 2, 4 > K_NE_pos =
+    (Eigen::Matrix<float, 2, 4>() << 0.3416f,   0,          1.6380f,    0,
+                                     0,         0.3416f,    0,          1.6380f).finished();
 
-    float m = 1.3f; // mass in kg
+    Eigen::Matrix<float, 1, 3 > K_D_pos = 
+    (Eigen::Matrix<float, 1, 3>() << 0.2f, 1.0f, 0.0f).finished(); 
+
+    float m = 1.335f; // mass in kg
     float g = 9.81f; // gravity in m/s^2
 };
 

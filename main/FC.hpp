@@ -56,10 +56,9 @@ public:
     FlightController();
 
     void setup();
-    void readSensors();
+    void loop();
 
 private:
-    void printState();
     void smooth_imuread(float& wx, float& wy, float& wz);
     void updateLedColorForRTKFix();
 

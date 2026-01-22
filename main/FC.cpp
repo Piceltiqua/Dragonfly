@@ -22,10 +22,9 @@ FlightController::FlightController()
     positionSetpoint.velN = 0.0f;
     positionSetpoint.velE = 0.0f;
     positionSetpoint.velD = 0.0f;
-
-    command.adjustMotorThrustForBatteryVoltage(battery.readAverageVoltagemV());
-    Serial.print("Thust Battery Coefficient : ");
-    Serial.println(actuators.thrustBatteryCoefficient);
+    positionSetpoint.accffN = 0.0f;
+    positionSetpoint.accffE = 0.0f;
+    positionSetpoint.accffD = 0.0f;
 }
 
 void FlightController::setup() {
@@ -40,13 +39,12 @@ void FlightController::setup() {
     initializeSD();
     delay(100);
 
-    // Serial.begin(115200);
     Serial1.begin(57600);  // THIS MUST NOT BE BEFORE THE OTHER SETUPS
     Serial1.addMemoryForWrite(extra_tx_mem, sizeof(extra_tx_mem));
     delay(1000);
 }
 
-void FlightController::readSensors() {
+void FlightController::loop() {
     // Emergency stop
     if (digitalRead(BUTTON_PIN) == HIGH) {
         Serial.println("Emergency stop");
@@ -73,11 +71,31 @@ void FlightController::readSensors() {
             attCtrl.control();
             command.commandGimbal(actuators.gimbalXAngle, actuators.gimbalYAngle);
         }
-        command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll);
+        command.commandMotorsThrust(actuators.motorThrust, deltaTimingRoll, batteryStatus.batteryVoltage);
 
         battery.readVoltage();
         battery.readCurrent();
         battery.integrateCurrentDraw();
+
+        if (InFlight) {
+            flightTimeSeconds = (static_cast<float>(millis()) - flightStartTime) / 1000.0f;
+            if (!waypointManager.flying(flightTimeSeconds)) {
+                InFlight = false;
+                PositionControlled = false;
+                AttitudeControlled = false;
+                RollControlled = false;
+
+                if (actuators.legsPosition == LEGS_DEPLOYED) {
+                    deltaTimingRoll = rollCtrl.MOTOR_DEPLOYED_OFFSET;
+                } else {
+                    deltaTimingRoll = rollCtrl.MOTOR_RETRACTED_OFFSET;
+                }
+                posCtrlOutput.thrustCommand = 0.0f;
+                actuators.motorThrust = 0;
+                command.commandMotorsThrust(0, 0);  // stop motors immediately
+                Serial.println("Flight complete.");
+            }
+        }
 
         // Position loop
         if (gnss.read()) {
@@ -85,25 +103,6 @@ void FlightController::readSensors() {
             if (gnssData.fixType == 6) {
             }
             
-            if (InFlight) {
-                flightTimeSeconds = (static_cast<float>(millis()) - flightStartTime) / 1000.0f;
-                if (!waypointManager.flying(flightTimeSeconds)) {
-                    InFlight = false;
-                    PositionControlled = false;
-                    AttitudeControlled = false;
-                    RollControlled = false;
-
-                    if (actuators.legsPosition == LEGS_DEPLOYED) {
-                        deltaTimingRoll = rollCtrl.MOTOR_DEPLOYED_OFFSET;
-                    } else {
-                        deltaTimingRoll = rollCtrl.MOTOR_RETRACTED_OFFSET;
-                    }
-                    posCtrlOutput.thrustCommand = 0.0f;
-                    actuators.motorThrust = 0;
-                    command.commandMotorsThrust(0, 0);  // stop motors immediately
-                    Serial.println("Flight complete.");
-                }
-            }
             if (PositionControlled) {
                 float dt = (micros() - lastGNSStime) / 1e6f;
                 posCtrl.control(dt);
@@ -144,8 +143,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
     // commands mapping:
     switch (header) {
         case MSG_FLY:
-            command.adjustMotorThrustForBatteryVoltage(battery.readAverageVoltagemV());
-    
             if (gnssData.fixType < 6) {
                 Serial.println("Cannot start flight: GNSS fix not sufficient.");
                 InFlight = false;
@@ -241,7 +238,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
 
         case MSG_ORIG:
             gnss.setReference(gnssData.lat, gnssData.lon, gnssData.alt);
-            command.adjustMotorThrustForBatteryVoltage(battery.readAverageVoltagemV());
             break;
 
         case MSG_ENG:
@@ -286,56 +282,6 @@ void FlightController::executeCommandFromPayload(const uint8_t* payload, size_t 
             Serial.println(header, HEX);
             break;
     }
-}
-
-void FlightController::printState() {
-    Serial.print(millis());
-    Serial.print(",");
-    Serial.print(attitude.qw);
-    Serial.print(",");
-    Serial.print(attitude.qi);
-    Serial.print(",");
-    Serial.print(attitude.qj);
-    Serial.print(",");
-    Serial.print(attitude.qk);
-    Serial.print(",");
-    Serial.print(attitude.wx);
-    Serial.print(",");
-    Serial.print(attitude.wy);
-    Serial.print(",");
-    Serial.print(attitude.wz);
-    Serial.print(",");
-    Serial.print(imuAcc.ax_NED);
-    Serial.print(",");
-    Serial.print(imuAcc.ay_NED);
-    Serial.print(",");
-    Serial.print(imuAcc.az_NED);
-    Serial.print(",");
-    Serial.print(gnssData.lat);
-    Serial.print(",");
-    Serial.print(gnssData.lon);
-    Serial.print(",");
-    Serial.print(gnssData.alt);
-    Serial.print(",");
-    Serial.print(gnssData.posN);
-    Serial.print(",");
-    Serial.print(gnssData.posE);
-    Serial.print(",");
-    Serial.print(gnssData.posD);
-    Serial.print(",");
-    Serial.print(gnssData.velN);
-    Serial.print(",");
-    Serial.print(gnssData.velE);
-    Serial.print(",");
-    Serial.print(gnssData.velD);
-    Serial.print(",");
-    Serial.print(gnssData.horAcc);
-    Serial.print(",");
-    Serial.print(gnssData.vertAcc);
-    Serial.print(",");
-    Serial.print(gnssData.numSV);
-    Serial.print(",");
-    Serial.println(gnssData.fixType);
 }
 
 void FlightController::updateLedColorForRTKFix() {

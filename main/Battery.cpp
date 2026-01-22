@@ -6,18 +6,17 @@ void Battery::setup() {
 }
 
 void Battery::readVoltage() {
-    batteryVoltage = (analogRead(BATTERY_VOLTAGE_PIN) / 1023.0f) * 33.0f;
-    batteryStatus_.batteryVoltage = static_cast<uint16_t>(batteryVoltage * 1000.0f);  // send in mV
-}
+    float rawVoltage = (analogRead(BATTERY_VOLTAGE_PIN) / 1023.0f) * 33.0f;
 
-uint16_t Battery::readAverageVoltagemV() {
-    float voltageSum = 0.0f;
-    const int numSamples = 10;
-    for (int i = 0; i < numSamples; ++i) {
-        voltageSum += (analogRead(BATTERY_VOLTAGE_PIN) / 1023.0f) * 33.0f;
-        delay(1);
-    }
-    return static_cast<uint16_t>((voltageSum / numSamples) * 1000.0f);
+    voltageSum_ -= voltageSamples_[voltageIndex_];
+    voltageSamples_[voltageIndex_] = rawVoltage;
+    voltageSum_ += rawVoltage;
+
+    voltageIndex_ = (voltageIndex_ + 1) % VOLTAGE_AVG_WINDOW;
+    if (voltageCount_ < VOLTAGE_AVG_WINDOW) {voltageCount_++;}
+
+    batteryVoltage = voltageSum_ / static_cast<float>(voltageCount_);
+    batteryStatus_.batteryVoltage = static_cast<uint16_t>(batteryVoltage * 1000.0f);
 }
 
 void Battery::readCurrent() {
