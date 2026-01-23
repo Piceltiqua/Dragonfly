@@ -95,7 +95,7 @@ void Command::commandMotorsThrust(float thrustMotor, float rollTimingOffset, flo
 }
 
 void Command::adjustMotorThrustForBatteryVoltage(float batteryVoltage_mV) {
-    actuatorCmds_.thrustBatteryCoefficient = 1.5e-4 * batteryVoltage_mV - 0.6624;
+    actuatorCmds_.thrustBatteryCoefficient = 1.4e-4 * batteryVoltage_mV - 0.5444;
 }
 
 int Command::thrustToTiming(float thrust_gram) {
