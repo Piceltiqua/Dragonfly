@@ -81,16 +81,28 @@ void FlightController::loop() {
             flightTimeSeconds = (static_cast<float>(millis()) - flightStartTime) / 1000.0f;
             if (!waypointManager.flying(flightTimeSeconds)) {
                 InFlight = false;
+                Landing = true;
                 PositionControlled = false;
                 AttitudeControlled = true;
                 RollControlled = true;
 
                 posCtrlOutput.attitudeSetpoint.pitch = 0.0f;
-                 posCtrlOutput.attitudeSetpoint.yaw = 0.0f;
-                posCtrlOutput.thrustCommand = 1000.0f;
-                actuators.motorThrust = 1000.0f;
-                command.commandMotorsThrust(1000.0f, deltaTimingRoll, batteryStatus.batteryVoltage);
-                Serial.println("Flight complete.");
+                posCtrlOutput.attitudeSetpoint.yaw = 0.0f;
+                Serial.println("Waypoint guidance finished, starting landing.");
+            }
+        }
+
+        if(Landing){
+            flightTimeSeconds = (static_cast<float>(millis()) - flightStartTime) / 1000.0f;
+            if(!waypointManager.landing(flightTimeSeconds, posCtrlOutput.thrustCommand)){
+                Landing = false;
+                AttitudeControlled = false;
+                RollControlled = false;
+                posCtrlOutput.thrustCommand = 0.0f;
+                actuators.motorThrust = 0.0f;
+                command.commandMotorsThrust(0, 0, batteryStatus.batteryVoltage);
+                Serial.println("Landing complete.");
+
             }
         }
 

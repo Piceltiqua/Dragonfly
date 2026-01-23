@@ -165,3 +165,17 @@ bool WaypointManager::waypointParameters(const Waypoint& target, const Waypoint&
         return true;
     }
 }
+
+bool WaypointManager::landing(float flight_time, float& thrust_command) {
+    const Waypoint& last_waypoint = waypoints_.back();
+    float t = flight_time - last_waypoint.time;
+
+    if (t < LANDING_DURATION) {
+        thrust_command = LANDING_INITIAL_THRUST + LANDING_THRUST_RATE * t; // g/s
+        return true;
+    } else {
+        thrust_command = 0.0f;
+        return false;
+    }
+    
+}

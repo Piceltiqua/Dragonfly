@@ -96,6 +96,7 @@ private:
     bool AttitudeControlled = false;
     bool PositionControlled = false;
     bool InFlight           = false;
+    bool Landing            = false;
 
     // Telemetry constants
     bool isRecording = false;
