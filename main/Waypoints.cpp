@@ -1,13 +1,20 @@
 #include "Waypoints.hpp"
 
 bool WaypointManager::init() {
+    // Reset internal state
+    waypoints_.clear();
+    invalid = false;
+    previous_waypoint_index_ = 0;
+    current_waypoint_index_  = 1;
+
     // Waypoints: time (s), posN (m), posE (m), posD (m)
-    waypoints_.push_back(Waypoint{0.0f,  0.0f, 0.0f,  0.0f});
-    waypoints_.push_back(Waypoint{1.0f,  0.0f, 0.0f,  0.0f});
-    waypoints_.push_back(Waypoint{6.0f,  0.0f, 0.0f, -1.0f});
-    waypoints_.push_back(Waypoint{300.0f, 0.0f, 0.0f, -1.0f});
-    waypoints_.push_back(Waypoint{325.0f, 0.0f, 0.0f, -0.0f});
-    waypoints_.push_back(Waypoint{330.0f, 0.0f, 0.0f, -0.0f});
+    waypoints_.push_back(Waypoint{0.0f,  0.0f,  0.0f,  0.0f});
+    waypoints_.push_back(Waypoint{1.0f,  0.0f,  0.0f,  0.0f});
+    waypoints_.push_back(Waypoint{6.0f,  0.0f,  0.0f, -1.0f});
+    waypoints_.push_back(Waypoint{10.0f, 0.0f,  0.0f, -1.0f});
+    waypoints_.push_back(Waypoint{20.0f, 0.0f,  0.0f,  0.0f});
+    waypoints_.push_back(Waypoint{21.0f, 0.0f,  0.0f,  0.0f});
+
 
     // Check all waypoint segments for feasibility
     for (size_t i = 1; i < waypoints_.size(); ++i) {
@@ -29,7 +36,7 @@ bool WaypointManager::init() {
     }
 
     previous_waypoint_index_ = 0;
-    current_waypoint_index_ = 1;
+    current_waypoint_index_  = 1;
     waypointParameters(waypoints_[current_waypoint_index_], waypoints_[previous_waypoint_index_]);
 
     return true;

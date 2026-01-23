@@ -82,17 +82,14 @@ void FlightController::loop() {
             if (!waypointManager.flying(flightTimeSeconds)) {
                 InFlight = false;
                 PositionControlled = false;
-                AttitudeControlled = false;
-                RollControlled = false;
+                AttitudeControlled = true;
+                RollControlled = true;
 
-                if (actuators.legsPosition == LEGS_DEPLOYED) {
-                    deltaTimingRoll = rollCtrl.MOTOR_DEPLOYED_OFFSET;
-                } else {
-                    deltaTimingRoll = rollCtrl.MOTOR_RETRACTED_OFFSET;
-                }
-                posCtrlOutput.thrustCommand = 0.0f;
-                actuators.motorThrust = 0;
-                command.commandMotorsThrust(0, 0);  // stop motors immediately
+                posCtrlOutput.attitudeSetpoint.pitch = 0.0f;
+                 posCtrlOutput.attitudeSetpoint.yaw = 0.0f;
+                posCtrlOutput.thrustCommand = 1000.0f;
+                actuators.motorThrust = 1000.0f;
+                command.commandMotorsThrust(1000.0f, deltaTimingRoll, batteryStatus.batteryVoltage);
                 Serial.println("Flight complete.");
             }
         }

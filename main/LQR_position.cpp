@@ -65,9 +65,10 @@ void PositionController::control(float dt){
     Eigen::Matrix<float, 3, 1> e_D = D - D_sp;
     Eigen::Matrix<float, 1, 1> u_D = -K_D_pos * e_D;
 
-    float accN = u_NE(0); // + position_setpoint_.accffN;
-    float accE = u_NE(1); // + position_setpoint_.accffE;
-    float accD = u_D(0) - position_setpoint_.accffD; // Add feedforward acceleration
+    // Add feedforward acceleration
+    float accN = u_NE(0) + position_setpoint_.accffN;
+    float accE = u_NE(1) + position_setpoint_.accffE;
+    float accD =  u_D(0) - position_setpoint_.accffD;
     accD = min(max(accD, -g), 20.60f); // prevent negative total thrust
 
     // Convert acceleration command to thrust command
