@@ -47,14 +47,14 @@ void Command::commandGimbal(float newGimbalAngleX, float newGimbalAngleY) {
 
     // If increasing angle motion
     if (newGimbalAngleX >= currentGimbalAngleX) {
-        actuatorCmds_.servoXAngle = -2.034e-2 * pow(newGimbalAngleX, 3) + 3.762e-2 * pow(newGimbalAngleX, 2) - 5.142 * newGimbalAngleX - 0;
+        actuatorCmds_.servoXAngle = -2.034e-2 * pow(newGimbalAngleX, 3) + 3.762e-2 * pow(newGimbalAngleX, 2) - 5.142 * newGimbalAngleX + 2;
     }
     if (newGimbalAngleY >= currentGimbalAngleY) {
         actuatorCmds_.servoYAngle = -3.339e-2 * pow(newGimbalAngleY, 2) - 5.364 * newGimbalAngleY + 13;
     }
     // If decreasing angle motion
     if (newGimbalAngleX < currentGimbalAngleX) {
-        actuatorCmds_.servoXAngle = -8.894e-2 * pow(newGimbalAngleX, 2) - 5.128 * newGimbalAngleX - 3;
+        actuatorCmds_.servoXAngle = -8.894e-2 * pow(newGimbalAngleX, 2) - 5.128 * newGimbalAngleX - 1;
     }
     if (newGimbalAngleY < currentGimbalAngleY) {
         actuatorCmds_.servoYAngle = -1.267e-2 * pow(newGimbalAngleY, 3) - 5.972e-2 * pow(newGimbalAngleY, 2) - 4.834 * newGimbalAngleY + 6;

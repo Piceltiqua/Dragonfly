@@ -12,8 +12,10 @@ bool WaypointManager::init() {
     waypoints_.push_back(Waypoint{1.0f,  0.0f,  0.0f,  0.0f});
     waypoints_.push_back(Waypoint{6.0f,  0.0f,  0.0f, -1.0f});
     waypoints_.push_back(Waypoint{10.0f, 0.0f,  0.0f, -1.0f});
-    waypoints_.push_back(Waypoint{20.0f, 0.0f,  0.0f,  0.0f});
-    waypoints_.push_back(Waypoint{21.0f, 0.0f,  0.0f,  0.0f});
+    waypoints_.push_back(Waypoint{25.0f, 0.0f, -3.0f, -1.0f});
+    waypoints_.push_back(Waypoint{30.0f, 0.0f, -3.0f, -1.0f});
+    waypoints_.push_back(Waypoint{40.0f, 0.0f, -3.0f,  0.0f});
+    waypoints_.push_back(Waypoint{41.0f, 0.0f, -3.0f,  0.0f});
 
 
     // Check all waypoint segments for feasibility

@@ -30,13 +30,13 @@ private:
 
     // Positon, speed, error_integral
     Eigen::Matrix<float, 2, 4 > K_NE_pos =
-    (Eigen::Matrix<float, 2, 4>() << 0.5f,    0, 2.0f,    0,
-                                        0, 0.5f,    0, 2.0f).finished();
+    (Eigen::Matrix<float, 2, 4>() << 0.55f,    0, 1.85f,    0,
+                                        0, 0.55f,    0, 1.85f).finished();
 
     Eigen::Matrix<float, 1, 3 > K_D_pos = 
     (Eigen::Matrix<float, 1, 3>() << 0.25f, 1.1f, 0.05f).finished(); 
 
-    float m = 1.338f; // mass in kg
+    float m = 1.334f; // mass in kg
     float g = 9.81f; // gravity in m/s^2
 };
 

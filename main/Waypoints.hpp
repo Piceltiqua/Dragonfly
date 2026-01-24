@@ -25,9 +25,9 @@ private:
     static constexpr float ACC_RATE = 0.2f;     // m/s²
     static constexpr float DEC_RATE = 0.2f;     // m/s²
 
-    static constexpr float LANDING_DURATION = 2.0f;      // seconds
-    static constexpr float LANDING_INITIAL_THRUST = 1200.0f; // g
-    static constexpr float LANDING_THRUST_RATE = -50.0f; // g/s
+    static constexpr float LANDING_DURATION = 1.2f;             // seconds
+    static constexpr float LANDING_INITIAL_THRUST = 1200.0f;    // g
+    static constexpr float LANDING_THRUST_RATE = -300.0f;       // g/s
 
     float Vc = 0.0f; // Cruise velocity
     float Ta = 0.0f; // Acceleration time
