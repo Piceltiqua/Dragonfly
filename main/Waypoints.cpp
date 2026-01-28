@@ -104,15 +104,15 @@ bool WaypointManager::flying(float flight_time) {
                                  v = 0.0f;
                                  s = S;}
 
-    position_setpoint_.posN = previous_waypoint.posN + s * ux;
-    position_setpoint_.posE = previous_waypoint.posE + s * uy;
-    position_setpoint_.posD = previous_waypoint.posD + s * uz;
-    position_setpoint_.velN = v * ux;
-    position_setpoint_.velE = v * uy;
-    position_setpoint_.velD = v * uz;
-    position_setpoint_.accffN = a * ux;
-    position_setpoint_.accffE = a * uy;
-    position_setpoint_.accffD = a * uz;
+    position_setpoint_.posN = previous_waypoint.posN + s * uN;
+    position_setpoint_.posE = previous_waypoint.posE + s * uE;
+    position_setpoint_.posD = previous_waypoint.posD + s * uD;
+    position_setpoint_.velN = v * uN;
+    position_setpoint_.velE = v * uE;
+    position_setpoint_.velD = v * uD;
+    position_setpoint_.accffN = a * uN;
+    position_setpoint_.accffE = a * uE;
+    position_setpoint_.accffD = a * uD;
 
     return true;
 }
@@ -128,15 +128,15 @@ bool WaypointManager::waypointParameters(const Waypoint& target, const Waypoint&
     S = sqrt(dx * dx + dy * dy + dz * dz);
 
     if (S < 1e-6f) {
-        ux = uy = uz = 0.0f;
+        uN = uE = uD = 0.0f;
         Ta = Tc = Td = 0.0f;
         Vc = 0.0f;
         return true;
     }
 
-    ux = dx / S;
-    uy = dy / S;
-    uz = dz / S;
+    uN = dx / S;
+    uE = dy / S;
+    uD = dz / S;
     
     if (T*T - 2.0f*C*S < 0) {
         Serial.println("Trajectory is not feasible with given constraints.");

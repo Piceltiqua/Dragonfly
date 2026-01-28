@@ -36,9 +36,9 @@ private:
     float S  = 0.0f; // Total distance
 
     // Unit direction vector components
-    float ux = 0.0f;
-    float uy = 0.0f;
-    float uz = 0.0f;
+    float uN = 0.0f;
+    float uE = 0.0f;
+    float uD = 0.0f;
 };
 
 #endif
